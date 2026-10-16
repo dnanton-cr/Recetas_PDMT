@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<!-- 
+================================================================================
+PROYECTO: Recetario Casero, Edición & Dolarización
+VERSIÓN: v1.5
+FECHA DE ACTUALIZACIÓN: Septiembre 2026
+AUTOR: Daniel Nanton
+
+--------------------------------------------------------------------------------
+HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
+--------------------------------------------------------------------------------
+1. CATEGORÍAS AMPLIADAS Y DINÁMICAS:
+   - Incorporación de las categorías "Carnes" y "Fermentos".
+   - Opción para agregar categorías personalizadas al vuelo desde el selector.
+
+2. NOTAS Y PROCESO EN EL VISOR & ESCALADOR:
+   - Visualización clara de las notas, fases y apuntes de preparación al seleccionar 
+     una receta en la pestaña Visor & Escalador.
+
+3. FORMATO EN ENRIQUECIDO (RICH TEXT - HTML):
+   - Editor Rich Text integrado mediante la barra de formato (Negrita, Cursiva, 
+     Subrayado, Listas) tanto para las Notas de Recetas como para las Notas/Proveedor 
+     en Precios e Ingredientes.
+================================================================================
+-->
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Recetario Casero v1.5 - Edición & Dolarización</title>
+  
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#4f46e5">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  
+  <style>
+    button, nav { user-select: none; -webkit-user-select: none; }
+    body { padding-bottom: 80px; }
+    @media (min-width: 768px) { body { padding-bottom: 20px; } }
+    
+    /* Estilos para el Editor Rich Text */
+    .rich-editor {
+      min-height: 80px;
+      max-height: 250px;
+      overflow-y: auto;
+    }
+    .rich-editor ul { list-style-type: disc; margin-left: 1.25rem; }
+    .rich-editor ol { list-style-type: decimal; margin-left: 1.25rem; }
+    .rich-content ul { list-style-type: disc; margin-left: 1.25rem; }
+    .rich-content ol { list-style-type: decimal; margin-left: 1.25rem; }
+    .rich-editor:empty:before {
+      content: attr(placeholder);
+      color: #9ca3af;
+      pointer-events: none;
+      display: block;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen">
+
+  <!-- ENCABEZADO PRINCIPAL -->
+  <header class="bg-indigo-600 text-white p-4 shadow-md sticky top-0 z-20">
+    <div class="max-w-5xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-2xl">🍞</span>
+        <div>
+          <h1 class="text-lg font-bold leading-tight">Recetario & Gestión de Costos <span class="text-xs font-normal bg-indigo-700 px-1.5 py-0.5 rounded text-indigo-100">v1.5</span></h1>
+          <p class="text-[10px] text-indigo-200">Control Multimoneda (CRC / USD)</p>
+        </div>
+      </div>
+      <div class="flex gap-2 text-xs">
+        <button onclick="exportarBackupJSON()" title="Respaldar datos en 2 archivos JSON" class="bg-indigo-700 hover:bg-indigo-800 px-2.5 py-1.5 rounded flex items-center gap-1 border border-indigo-500">
+          💾 <span class="hidden sm:inline">Backup</span>
+        </button>
+        <button onclick="document.getElementById('input-importar-json').click()" title="Cargar JSON (Ingredientes o Recetas)" class="bg-indigo-700 hover:bg-indigo-800 px-2.5 py-1.5 rounded flex items-center gap-1 border border-indigo-500">
+          📂 <span class="hidden sm:inline">Cargar JSON</span>
+        </button>
+        <input type="file" id="input-importar-json" class="hidden" accept=".json" multiple onchange="importarBackupJSON(event)">
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto p-3 md:p-6">
+
+    <!-- NAVEGACIÓN DESKTOP -->
+    <nav class="hidden md:flex border-b border-slate-200 mb-6 bg-white rounded-lg shadow-sm p-1 space-x-2 text-sm">
+      <button id="btn-tab-visor-desktop" onclick="switchTab('visor')" class="flex-1 py-2 px-4 rounded font-medium text-center bg-indigo-50 text-indigo-600">
+        📖 Visor & Escalador
+      </button>
+      <button id="btn-tab-receta-editor-desktop" onclick="switchTab('receta-editor')" class="flex-1 py-2 px-4 rounded font-medium text-center text-slate-600 hover:bg-slate-50">
+        ✏️ Gestor de Recetas
+      </button>
+      <button id="btn-tab-ingredientes-desktop" onclick="switchTab('ingredientes')" class="flex-1 py-2 px-4 rounded font-medium text-center text-slate-600 hover:bg-slate-50">
+        🏷️ Precios e Ingredientes
+      </button>
+      <button id="btn-tab-excel-desktop" onclick="switchTab('excel')" class="flex-1 py-2 px-4 rounded font-medium text-center text-slate-600 hover:bg-slate-50">
+        📊 Migración Excel
+      </button>
+    </nav>
+
+    <!-- PESTAÑA 1: VISOR & ESCALADOR -->
+    <section id="tab-visor" class="block space-y-4">
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Seleccionar Receta (Ordenadas por Uso Reciente 🕒)</label>
+          <select id="select-receta-visor" onchange="cargarRecetaEnVisor()" class="w-full border rounded-lg p-2.5 text-sm bg-slate-50 font-bold">
+            <!-- Dinámico -->
+          </select>
+        </div>
+        
+        <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+          <div>
+            <label class="text-xs font-semibold text-slate-600 block">Cantidad a Producir (Unidades):</label>
+            <span class="text-[10px] text-slate-400">Base de esta receta: <b id="lbl-unidades-base">1</b> unid.</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="ajustarUnidades(-1)" class="w-8 h-8 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-base">-</button>
+            <input type="number" id="input-unidades-deseadas" value="1" min="0.5" step="0.5" onchange="recalcularVisor()" oninput="recalcularVisor()" class="w-16 border rounded-lg p-1.5 text-sm text-center font-bold bg-indigo-50 text-indigo-700 border-indigo-200">
+            <button onclick="ajustarUnidades(1)" class="w-8 h-8 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-base">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="contenido-visor" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 md:p-6 space-y-5">
+        <!-- Render dinámico -->
+      </div>
+    </section>
+
+    <!-- PESTAÑA 2: EDITAR / CREAR RECETA -->
+    <section id="tab-receta-editor" class="hidden space-y-4">
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
+        <label class="block text-xs font-bold text-slate-700 mb-1">Seleccionar Receta para Editar o Crear Nueva (Ordenadas por Uso Reciente 🕒):</label>
+        <select id="select-receta-editar" onchange="cargarRecetaEnEditor()" class="w-full border rounded-lg p-2.5 text-xs bg-slate-50 font-semibold">
+          <!-- Cargar dinámicamente lista de recetas -->
+        </select>
+      </div>
+
+      <form id="form-receta" onsubmit="guardarReceta(event)" class="space-y-4">
+        <input type="hidden" id="receta-id">
+        <input type="hidden" id="receta-unidades-anteriores" value="1">
+
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
+          <div class="flex justify-between items-center border-b pb-2">
+            <h2 class="text-xs font-bold text-slate-700">Datos Principales</h2>
+            <button type="button" id="btn-eliminar-receta" onclick="eliminarRecetaActual()" class="hidden text-xs bg-red-50 text-red-600 font-bold px-2.5 py-1 rounded-lg">🗑️ Eliminar Receta</button>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Nombre de la Receta</label>
+            <input type="text" id="receta-nombre" required placeholder="Ej. Pan Integral PDMT" class="w-full border rounded-lg p-2 text-xs">
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Categoría</label>
+              <select id="receta-categoria" onchange="manejarCambioCategoria(this)" class="w-full border rounded-lg p-2 text-xs bg-white">
+                <!-- Se llena dinámicamente -->
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Unidades Base</label>
+              <input type="number" id="receta-unidades-base" value="1" min="1" step="1" required onchange="alCambiarUnidadesBaseEditor()" class="w-full border rounded-lg p-2 text-xs font-bold bg-amber-50 border-amber-300">
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
+          <div class="flex justify-between items-center border-b pb-2">
+            <div>
+              <h3 class="font-bold text-xs text-slate-700">Ingredientes & Peso Financiero</h3>
+              <p class="text-[10px] text-slate-400">Desglose de costo e impacto relativo (%) de cada insumo</p>
+            </div>
+            <button type="button" onclick="agregarFilaIngredienteReceta()" class="text-xs bg-indigo-50 text-indigo-600 font-semibold px-2.5 py-1 rounded-lg">+ Agregar Ingrediente</button>
+          </div>
+          
+          <div id="filas-ingredientes-receta" class="space-y-2">
+            <!-- Dinámico desde lista de ingredientes -->
+          </div>
+
+          <div class="pt-2 border-t flex justify-between items-center text-xs font-bold text-slate-700 bg-slate-50 p-2.5 rounded-lg">
+            <span>Costo Estimado Base:</span>
+            <span id="lbl-costo-total-editor" class="text-indigo-600 font-mono text-sm">₡0 (0.00 USD)</span>
+          </div>
+        </div>
+
+        <div class="bg-amber-50/70 border border-amber-200 p-4 rounded-xl space-y-3">
+          <h3 class="font-bold text-xs text-amber-900 flex items-center gap-1">⏱️ Fases, Notas y Proceso (Rich Text)</h3>
+          
+          <!-- Barra de Herramientas Rich Text -->
+          <div class="flex flex-wrap gap-1 bg-white p-1 rounded-t-lg border border-b-0 border-slate-300 text-xs">
+            <button type="button" onclick="execCommandRich('bold', 'fase-1-editor')" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 font-bold rounded" title="Negrita">B</button>
+            <button type="button" onclick="execCommandRich('italic', 'fase-1-editor')" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 italic rounded" title="Cursiva">I</button>
+            <button type="button" onclick="execCommandRich('underline', 'fase-1-editor')" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 underline rounded" title="Subrayado">U</button>
+            <div class="h-4 w-[1px] bg-slate-300 my-auto mx-1"></div>
+            <button type="button" onclick="execCommandRich('insertUnorderedList', 'fase-1-editor')" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded" title="Lista Viñetas">• Lista</button>
+            <button type="button" onclick="execCommandRich('insertOrderedList', 'fase-1-editor')" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded" title="Lista Numerada">1. Lista</button>
+          </div>
+          
+          <div id="fase-1-editor" contenteditable="true" placeholder="Fases, apuntes y tiempos del proceso..." class="rich-editor w-full border border-slate-300 rounded-b-lg p-2.5 text-xs bg-white text-slate-800"></div>
+        </div>
+
+        <div class="flex gap-2 pt-1">
+          <button type="button" onclick="nuevaReceta()" class="flex-1 py-2.5 border rounded-xl text-xs font-semibold bg-white">Limpiar / Nueva</button>
+          <button type="submit" class="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-semibold shadow">Guardar Receta</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- PESTAÑA 3: PRECIOS E INGREDIENTES -->
+    <section id="tab-ingredientes" class="hidden space-y-4">
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
+        <div class="flex justify-between items-center border-b pb-2">
+          <h2 class="text-xs font-bold text-slate-700">Configuración Financiera</h2>
+          <div class="flex items-center gap-2">
+            <label class="text-[11px] font-bold text-slate-600">Tipo de Cambio (₡/$):</label>
+            <input type="number" id="input-tipo-cambio" value="575" step="1" onchange="actualizarTipoCambio()" class="w-20 border rounded-lg p-1 text-xs font-bold text-center bg-amber-50 border-amber-300">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">Seleccionar Insumo para Editar o Crear Nuevo:</label>
+          <select id="select-ingrediente-editar" onchange="cargarIngredienteEnEditor()" class="w-full border rounded-lg p-2 text-xs bg-slate-50 font-semibold">
+            <!-- Cargar dinámicamente -->
+          </select>
+        </div>
+
+        <form id="form-ingrediente" onsubmit="guardarIngrediente(event)" class="space-y-3 pt-1 border-t border-slate-100">
+          <input type="hidden" id="ing-id">
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Nombre Ingrediente / Marca</label>
+            <input type="text" id="ing-nombre" required placeholder="Ej. Harina de trigo - Sabemas" class="w-full border rounded-lg p-2 text-xs">
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">Unidad</label>
+              <select id="ing-unidad" class="w-full border rounded-lg p-2 text-xs bg-white">
+                <option value="g">Gramos (g)</option>
+                <option value="ml">Mililitros (ml)</option>
+                <option value="unid">Unidades</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">Cant. Paquete</label>
+              <input type="number" step="1" id="ing-cantidad" required placeholder="1000" class="w-full border rounded-lg p-2 text-xs">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">Costo CRC (₡)</label>
+              <input type="number" step="1" id="ing-precio" required placeholder="1350" class="w-full border rounded-lg p-2 text-xs">
+            </div>
+          </div>
+          
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Notas / Proveedor / Preparación (Rich Text)</label>
+            <!-- Barra de Herramientas Rich Text para Insumo -->
+            <div class="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-t-lg border border-b-0 border-slate-300 text-[11px]">
+              <button type="button" onclick="execCommandRich('bold', 'ing-notas-editor')" class="px-2 py-0.5 bg-white hover:bg-slate-200 font-bold rounded" title="Negrita">B</button>
+              <button type="button" onclick="execCommandRich('italic', 'ing-notas-editor')" class="px-2 py-0.5 bg-white hover:bg-slate-200 italic rounded" title="Cursiva">I</button>
+              <button type="button" onclick="execCommandRich('underline', 'ing-notas-editor')" class="px-2 py-0.5 bg-white hover:bg-slate-200 underline rounded" title="Subrayado">U</button>
+              <div class="h-4 w-[1px] bg-slate-300 my-auto mx-1"></div>
+              <button type="button" onclick="execCommandRich('insertUnorderedList', 'ing-notas-editor')" class="px-2 py-0.5 bg-white hover:bg-slate-200 rounded" title="Lista Viñetas">• Lista</button>
+            </div>
+            <div id="ing-notas-editor" contenteditable="true" placeholder="Ej. Proveedor Automercado, o pasos para preparar masa madre..." class="rich-editor min-h-[60px] max-h-[120px] w-full border border-slate-300 rounded-b-lg p-2 text-xs bg-slate-50 text-slate-800"></div>
+          </div>
+
+          <div class="flex gap-2">
+            <button type="button" id="btn-eliminar-ingrediente" onclick="eliminarIngredienteActual()" class="hidden flex-1 py-2 bg-red-50 text-red-600 rounded-lg text-xs font-bold">🗑️ Eliminar Insumo</button>
+            <button type="submit" class="flex-1 py-2 bg-indigo-600 text-white rounded-lg text-xs font-semibold">Guardar Insumo</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="p-3 bg-slate-50 border-b text-xs font-bold text-slate-700 flex justify-between items-center">
+          <span>Catálogo de Insumos</span>
+          <span class="text-[10px] text-slate-500 font-normal">Total: <b id="total-ing-count">0</b></span>
+        </div>
+        <div id="lista-ingredientes-mobile" class="divide-y text-xs max-h-96 overflow-y-auto">
+          <!-- Render Dinámico -->
+        </div>
+      </div>
+    </section>
+
+    <!-- PESTAÑA 4: MIGRACIÓN DE EXCEL -->
+    <section id="tab-excel" class="hidden space-y-4">
+      <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
+        <h2 class="text-sm font-bold text-slate-800">Lectura Masiva desde Excel</h2>
+        <p class="text-xs text-slate-600 leading-relaxed">
+          Sube tu hoja de cálculo (.xlsx). El sistema localizará automáticamente la celda que diga <b>"Cantidad unidades"</b> para extraer las unidades base exactas.
+        </p>
+
+        <div class="border-2 border-dashed border-slate-300 bg-slate-50 p-4 rounded-xl text-center">
+          <label for="excelFile" class="cursor-pointer flex flex-col items-center justify-center gap-1">
+            <span class="text-2xl">📊</span>
+            <span class="text-xs font-bold text-indigo-600">Seleccionar Archivo Excel (.xlsx)</span>
+          </label>
+          <input type="file" id="excelFile" accept=".xlsx, .xls" class="hidden" onchange="alSeleccionarArchivoExcel(event)">
+        </div>
+
+        <div id="opciones-migracion" class="hidden bg-slate-50 p-4 rounded-xl border space-y-3">
+          <h3 class="text-xs font-bold text-slate-700 border-b pb-1">¿Qué elementos deseas leer y migrar?</h3>
+          <div class="space-y-2 text-xs">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="chk-cargar-ingredientes" checked class="w-4 h-4 text-indigo-600 rounded">
+              <span class="font-medium">Leer y actualizar Catálogo de Precios e Ingredientes ("Datos Ingredientes")</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="chk-cargar-todas-recetas" checked class="w-4 h-4 text-indigo-600 rounded">
+              <span class="font-medium text-emerald-700 font-bold">Escanear y migrar TODAS las recetas automáticamente</span>
+            </label>
+          </div>
+          <button onclick="ejecutarMigracionExcel()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg shadow">
+            🚀 Procesar Componentes Seleccionados
+          </button>
+        </div>
+
+        <div id="statusMsg" class="hidden p-3 rounded-lg text-xs font-medium"></div>
+
+        <div id="panel-revision-excel" class="hidden border-t pt-4 space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-bold text-slate-700">Inspección de Recetas Detectadas:</h3>
+            <span id="cant-recetas-excel" class="text-[11px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold">0</span>
+          </div>
+
+          <select id="select-receta-excel" onchange="mostrarVistaPreviaExcel()" class="w-full border rounded-lg p-2.5 text-xs bg-slate-50 font-bold text-slate-700">
+            <!-- Dinámico -->
+          </select>
+
+          <div id="vista-previa-receta" class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3 text-xs">
+            <!-- Vista previa dinámico -->
+          </div>
+
+          <button onclick="aprobarEIncluirRecetaActual()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow flex items-center justify-center gap-2">
+            ✅ Aprobar e Incluir solo esta Receta
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- NAVEGACIÓN MÓVIL INFERIOR -->
+  <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around p-2 z-30 shadow-lg">
+    <button id="btn-tab-visor-mobile" onclick="switchTab('visor')" class="flex flex-col items-center text-indigo-600">
+      <span class="text-lg">📖</span>
+      <span class="text-[10px] font-medium">Visor</span>
+    </button>
+    <button id="btn-tab-receta-editor-mobile" onclick="switchTab('receta-editor')" class="flex flex-col items-center text-slate-500">
+      <span class="text-lg">✏️</span>
+      <span class="text-[10px] font-medium">Recetas</span>
+    </button>
+    <button id="btn-tab-ingredientes-mobile" onclick="switchTab('ingredientes')" class="flex flex-col items-center text-slate-500">
+      <span class="text-lg">🏷️</span>
+      <span class="text-[10px] font-medium">Precios</span>
+    </button>
+    <button id="btn-tab-excel-mobile" onclick="switchTab('excel')" class="flex flex-col items-center text-slate-500">
+      <span class="text-lg">📊</span>
+      <span class="text-[10px] font-medium">Excel</span>
+    </button>
+  </nav>
+
+  <script>
+    /*
+      ==========================================================================
+      LÓGICA PRINCIPAL DE LA APLICACIÓN - RECETARIO Y COSTOS v1.5
+      ==========================================================================
+    */
+    let tipoCambioGlobal = parseFloat(localStorage.getItem('app_tc')) || 575;
+    let ingredientes = JSON.parse(localStorage.getItem('app_ingredientes')) || [];
+    let recetas = JSON.parse(localStorage.getItem('app_recetas')) || [];
+    let recientesIDs = JSON.parse(localStorage.getItem('app_recientes_ids')) || [];
+    let categoriasGuardadas = JSON.parse(localStorage.getItem('app_categorias')) || ["Panadería", "Carnes", "Fermentos", "Sopas", "Helados", "General"];
+    
+    let recetasExtraidasExcel = [];
+    let workbookCargado = null;
+
+    // Normalizador de Insumos para compatibilidad retroactiva
+    function normalizarIngredientes(lista) {
+      if(!Array.isArray(lista)) return [];
+      return lista.map(i => ({
+        id: i.id || Date.now() + Math.random(),
+        nombre: i.nombre || 'Sin Nombre',
+        unidad: i.unidad || 'g',
+        cantidad: Math.round(parseFloat(i.cantidad) || 1000),
+        precioCRC: Math.round(parseFloat(i.precioCRC) || 0),
+        notas: i.notas || ''
+      }));
+    }
+
+    ingredientes = normalizarIngredientes(ingredientes);
+
+    // Ejecutor de comandos Rich Text
+    function execCommandRich(command, editorId) {
+      document.getElementById(editorId).focus();
+      document.execCommand(command, false, null);
+    }
+
+    function switchTab(tab) {
+      ['visor', 'receta-editor', 'ingredientes', 'excel'].forEach(t => {
+        const el = document.getElementById(`tab-${t}`);
+        if (el) el.classList.toggle('hidden', t !== tab);
+        
+        const btnD = document.getElementById(`btn-tab-${t}-desktop`);
+        if(btnD) btnD.className = t === tab ? "flex-1 py-2 px-4 rounded font-medium text-center bg-indigo-50 text-indigo-600" : "flex-1 py-2 px-4 rounded font-medium text-center text-slate-600 hover:bg-slate-50";
+
+        const btnM = document.getElementById(`btn-tab-${t}-mobile`);
+        if(btnM) btnM.className = t === tab ? "flex flex-col items-center text-indigo-600" : "flex flex-col items-center text-slate-500";
+      });
+
+      if(tab === 'visor') renderVisorSelect();
+      if(tab === 'receta-editor') {
+        renderCategoriasSelect();
+        renderEditorSelect();
+      }
+      if(tab === 'ingredientes') {
+        renderTablaIngredientes();
+        renderIngredienteSelectEditor();
+      }
+    }
+
+    // --- MANEJO DE CATEGORÍAS ---
+    function renderCategoriasSelect(categoriaSeleccionada = '') {
+      const select = document.getElementById('receta-categoria');
+      select.innerHTML = '';
+      
+      // Categorías estándar y personalizadas
+      categoriasGuardadas.forEach(cat => {
+        const sel = cat === categoriaSeleccionada ? 'selected' : '';
+        select.innerHTML += `<option value="${cat}" ${sel}>${cat}</option>`;
+      });
+
+      select.innerHTML += `<option value="__NUEVA__" class="font-bold text-indigo-600">➕ Agregar nueva categoría...</option>`;
+    }
+
+    function manejarCambioCategoria(selectEl) {
+      if(selectEl.value === '__NUEVA__') {
+        const nuevaCat = prompt("Ingresa el nombre de la nueva categoría:");
+        if(nuevaCat && nuevaCat.trim() !== "") {
+          const nombreLimpio = nuevaCat.trim();
+          if(!categoriasGuardadas.includes(nombreLimpio)) {
+            categoriasGuardadas.push(nombreLimpio);
+            localStorage.setItem('app_categorias', JSON.stringify(categoriasGuardadas));
+          }
+          renderCategoriasSelect(nombreLimpio);
+        } else {
+          selectEl.value = categoriasGuardadas[0] || 'General';
+        }
+      }
+    }
+
+    function actualizarTipoCambio() {
+      const val = parseFloat(document.getElementById('input-tipo-cambio').value);
+      if(val > 0) {
+        tipoCambioGlobal = val;
+        localStorage.setItem('app_tc', tipoCambioGlobal);
+        renderTablaIngredientes();
+        recalcularVisor();
+        calcularCostosEditor();
+      }
+    }
+
+    function ajustarUnidades(delta) {
+      const input = document.getElementById('input-unidades-deseadas');
+      let val = (parseFloat(input.value) || 1) + delta;
+      if(val < 0.5) val = 0.5;
+      input.value = val;
+      recalcularVisor();
+    }
+
+    function registrarRecetaUsadaRecientemente(id) {
+      if(!id) return;
+      const idStr = String(id);
+      recientesIDs = recientesIDs.filter(i => i !== idStr);
+      recientesIDs.unshift(idStr);
+      if(recientesIDs.length > 10) recientesIDs.pop();
+      localStorage.setItem('app_recientes_ids', JSON.stringify(recientesIDs));
+    }
+
+    function obtenerRecetasOrdenadasPorUso() {
+      let ordenadas = [...recetas];
+      ordenadas.sort((a, b) => {
+        let idxA = recientesIDs.indexOf(String(a.id));
+        let idxB = recientesIDs.indexOf(String(b.id));
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return a.nombre.localeCompare(b.nombre);
+      });
+      return ordenadas;
+    }
+
+    // --- MIGRACIÓN DE EXCEL ---
+    function alSeleccionarArchivoExcel(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const data = new Uint8Array(evt.target.result);
+          workbookCargado = XLSX.read(data, { type: 'array' });
+          document.getElementById('opciones-migracion').classList.remove('hidden');
+          showStatus('Archivo cargado. Selecciona los componentes a migrar.', 'success');
+        } catch (err) {
+          console.error(err);
+          showStatus('Error al leer el archivo Excel.', 'error');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function ejecutarMigracionExcel() {
+      if(!workbookCargado) return;
+
+      const cargarIng = document.getElementById('chk-cargar-ingredientes').checked;
+      const cargarTodasRecetas = document.getElementById('chk-cargar-todas-recetas').checked;
+
+      if(cargarIng && workbookCargado.SheetNames.includes('Datos Ingredientes')) {
+        const sheetIng = workbookCargado.Sheets['Datos Ingredientes'];
+        const jsonIng = XLSX.utils.sheet_to_json(sheetIng, { header: 1 });
+        extraerDatosIngredientesExcel(jsonIng);
+      }
+
+      const pestañasOmite = ['Acerca de', 'Uso Maquina', 'Menu', 'Datos Ingredientes', 'Proveedores', 'Calcular', 'Calcular produccion', 'Recetas'];
+      recetasExtraidasExcel = [];
+
+      workbookCargado.SheetNames.forEach(sheetName => {
+        if(!pestañasOmite.includes(sheetName)) {
+          const worksheet = workbookCargado.Sheets[sheetName];
+          const jsonRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          if(jsonRows.length > 5) {
+            const receta = extraerRecetaDePestaña(sheetName, jsonRows);
+            if(receta.ingredientes.length > 0) recetasExtraidasExcel.push(receta);
+          }
+        }
+      });
+
+      if(cargarTodasRecetas && recetasExtraidasExcel.length > 0) {
+        recetasExtraidasExcel.forEach(rExcel => {
+          const nuevaReceta = {
+            id: Date.now() + Math.random(),
+            nombre: rExcel.nombre,
+            categoria: rExcel.categoria,
+            unidadesBase: rExcel.unidadesBase,
+            ingredientes: rExcel.ingredientes,
+            fases: rExcel.fases
+          };
+          recetas = recetas.filter(r => r.nombre !== nuevaReceta.nombre);
+          recetas.push(nuevaReceta);
+        });
+        guardarLocal();
+      }
+
+      if(recetasExtraidasExcel.length > 0) {
+        document.getElementById('panel-revision-excel').classList.remove('hidden');
+        document.getElementById('cant-recetas-excel').textContent = `${recetasExtraidasExcel.length} encontradas`;
+        
+        const select = document.getElementById('select-receta-excel');
+        select.innerHTML = '';
+        recetasExtraidasExcel.forEach((r, idx) => {
+          select.innerHTML += `<option value="${idx}">${r.nombre} (${r.unidadesBase} unid. / ${r.ingredientes.length} ing.)</option>`;
+        });
+
+        mostrarVistaPreviaExcel();
+      }
+
+      showStatus(`Proceso completado. (${ingredientes.length} insumos y ${recetas.length} recetas en sistema)`, 'success');
+      renderTablaIngredientes();
+      renderIngredienteSelectEditor();
+    }
+
+    function extraerDatosIngredientesExcel(rows) {
+      if (rows.length < 2) return;
+      
+      const nuevosIngredientes = [];
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        if (!r || !r[0]) continue;
+
+        const nombreMarca = String(r[0]).trim();
+        const costoCRC = Math.round(parseFloat(r[3]) || 0);
+        const cantidadPkg = Math.round(parseFloat(r[4]) || 1000);
+
+        nuevosIngredientes.push({
+          id: i,
+          nombre: nombreMarca,
+          unidad: 'g',
+          cantidad: cantidadPkg,
+          precioCRC: costoCRC,
+          notas: ''
+        });
+      }
+
+      if(nuevosIngredientes.length > 0) {
+        ingredientes = nuevosIngredientes;
+        guardarLocal();
+      }
+    }
+
+    function extraerRecetaDePestaña(nombreReceta, rows) {
+      const listaIngredientes = [];
+      
+      for(let i = 1; i <= 11; i++) {
+        if(rows[i] && rows[i][0] && rows[i][1]) {
+          const nombreIng = String(rows[i][0]).trim();
+          const cant = parseFloat(rows[i][1]);
+          if(nombreIng && !isNaN(cant) && cant > 0) {
+            listaIngredientes.push({ nombre: nombreIng, cantidad: Math.round(cant) });
+          }
+        }
+      }
+
+      let unidades = 1;
+      for (let i = 0; i < rows.length; i++) {
+        if (rows[i] && rows[i][0]) {
+          const colA = String(rows[i][0]).trim().toLowerCase();
+          if (colA.includes("cantidad unidades")) {
+            const valB = parseFloat(rows[i][1]);
+            if (!isNaN(valB) && valB > 0) {
+              unidades = Math.round(valB);
+              break;
+            }
+          }
+        }
+      }
+
+      let fasesTexto = "";
+      for(let i = 30; i < 38; i++) {
+        if(rows[i] && rows[i][3]) {
+          const paso = String(rows[i][3]).trim();
+          const val = rows[i][4] ? ` (${rows[i][4]})` : '';
+          fasesTexto += `• ${paso}${val}<br>`;
+        }
+      }
+
+      return {
+        nombre: nombreReceta,
+        categoria: "Panadería",
+        unidadesBase: unidades,
+        ingredientes: listaIngredientes,
+        fases: { fase1: fasesTexto || "Proceso estándar registrado." }
+      };
+    }
+
+    function mostrarVistaPreviaExcel() {
+      const idx = document.getElementById('select-receta-excel').value;
+      const r = recetasExtraidasExcel[idx];
+      const cont = document.getElementById('vista-previa-receta');
+      if(!r) return;
+
+      let harinaTotal = 0;
+      r.ingredientes.forEach(item => {
+        if(item.nombre.toLowerCase().includes('harina')) harinaTotal += item.cantidad;
+      });
+      if(harinaTotal === 0) harinaTotal = r.ingredientes[0].cantidad;
+
+      let ingHTML = '';
+      r.ingredientes.forEach(item => {
+        const pctPanadero = ((item.cantidad / harinaTotal) * 100).toFixed(1);
+        ingHTML += `<div class="flex justify-between py-1 border-b text-[11px]">
+          <span>${item.nombre}</span>
+          <div>
+            <span class="font-bold font-mono">${Math.round(item.cantidad)} g</span>
+            <span class="text-[10px] text-indigo-600 font-bold ml-2">(${pctPanadero}%)</span>
+          </div>
+        </div>`;
+      });
+
+      cont.innerHTML = `
+        <div class="flex justify-between items-center">
+          <span class="font-bold text-sm text-indigo-700">${r.nombre}</span>
+          <span class="text-xs bg-indigo-100 text-indigo-800 font-bold px-2 py-0.5 rounded-full">Base: ${r.unidadesBase} unidades</span>
+        </div>
+        <div class="bg-white p-2 rounded-lg border max-h-40 overflow-y-auto">${ingHTML}</div>`;
+    }
+
+    function aprobarEIncluirRecetaActual() {
+      const idx = document.getElementById('select-receta-excel').value;
+      const rExcel = recetasExtraidasExcel[idx];
+      if(!rExcel) return;
+
+      const nuevaReceta = {
+        id: Date.now(),
+        nombre: rExcel.nombre,
+        categoria: rExcel.categoria,
+        unidadesBase: rExcel.unidadesBase,
+        ingredientes: rExcel.ingredientes,
+        fases: rExcel.fases
+      };
+
+      recetas = recetas.filter(r => r.nombre !== nuevaReceta.nombre);
+      recetas.push(nuevaReceta);
+      guardarLocal();
+      alert(`¡Receta "${nuevaReceta.nombre}" aprobada e incluida con éxito!`);
+      switchTab('visor');
+    }
+
+    // --- VISOR DE RECETAS (ORDENADO POR USO RECIENTE) ---
+    function renderVisorSelect() {
+      const select = document.getElementById('select-receta-visor');
+      select.innerHTML = '';
+
+      const ordenadas = obtenerRecetasOrdenadasPorUso();
+      ordenadas.forEach(r => {
+        const esReciente = recientesIDs.includes(String(r.id)) ? ' 🕒' : '';
+        select.innerHTML += `<option value="${r.id}">${r.nombre} (${r.unidadesBase || 1} unid.)${esReciente}</option>`;
+      });
+
+      cargarRecetaEnVisor();
+    }
+
+    function cargarRecetaEnVisor() {
+      const id = document.getElementById('select-receta-visor').value;
+      const receta = recetas.find(r => String(r.id) === String(id));
+      if(receta) {
+        registrarRecetaUsadaRecientemente(receta.id);
+        const uBase = receta.unidadesBase || 1;
+        document.getElementById('lbl-unidades-base').textContent = uBase;
+        document.getElementById('input-unidades-deseadas').value = uBase;
+      }
+      recalcularVisor();
+    }
+
+    function recalcularVisor() {
+      const id = document.getElementById('select-receta-visor').value;
+      const receta = recetas.find(r => String(r.id) === String(id));
+      const visor = document.getElementById('contenido-visor');
+
+      if(!receta) {
+        visor.innerHTML = `<p class="text-slate-400 text-center text-xs">No hay recetas en el recetario.</p>`;
+        return;
+      }
+
+      const uBase = receta.unidadesBase || 1;
+      const uDeseadas = parseFloat(document.getElementById('input-unidades-deseadas').value) || uBase;
+      const factorEscala = uDeseadas / uBase;
+
+      let harinaTotal = 0;
+      receta.ingredientes.forEach(i => {
+        if(i.nombre.toLowerCase().includes('harina')) harinaTotal += i.cantidad;
+      });
+      if(harinaTotal === 0 && receta.ingredientes.length > 0) harinaTotal = receta.ingredientes[0].cantidad;
+
+      let filasHTML = '';
+      let costoTotalCRC = 0;
+
+      receta.ingredientes.forEach(item => {
+        const cantEscalada = Math.round(item.cantidad * factorEscala);
+        const pctPanadero = harinaTotal > 0 ? ((item.cantidad / harinaTotal) * 100).toFixed(1) : '0.0';
+
+        const ingCoincidente = ingredientes.find(i => i.nombre.toLowerCase().includes(item.nombre.toLowerCase()) || item.nombre.toLowerCase().includes(i.nombre.toLowerCase()));
+        let costoItemCRC = 0;
+        
+        if(ingCoincidente && ingCoincidente.cantidad > 0) {
+          const costoUnidadGramo = ingCoincidente.precioCRC / ingCoincidente.cantidad;
+          costoItemCRC = costoUnidadGramo * cantEscalada;
+        }
+
+        costoTotalCRC += costoItemCRC;
+        const costoItemUSD = costoItemCRC / tipoCambioGlobal;
+
+        filasHTML += `
+          <div class="flex justify-between items-center py-2 border-b text-xs">
+            <div>
+              <span class="font-medium text-slate-800 block">${item.nombre}</span>
+              <span class="text-[10px] text-indigo-600 font-bold">% Panadero: ${pctPanadero}%</span>
+            </div>
+            <div class="text-right">
+              <span class="font-bold text-indigo-700 font-mono text-sm">${cantEscalada} g</span>
+              <div class="text-[10px] text-slate-500">₡${costoItemCRC.toFixed(1)} ($${costoItemUSD.toFixed(2)})</div>
+            </div>
+          </div>`;
+      });
+
+      const costoTotalUSD = costoTotalCRC / tipoCambioGlobal;
+
+      // Recuperar notas formateadas o simples
+      let notasHTML = receta.fases ? (receta.fases.fase1 || '') : '';
+      if(notasHTML && !notasHTML.includes('<')) {
+        notasHTML = notasHTML.replace(/\n/g, '<br>');
+      }
+
+      visor.innerHTML = `
+        <div class="border-b pb-3 flex justify-between items-start">
+          <div>
+            <span class="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full">${receta.categoria || 'General'}</span>
+            <h2 class="text-lg font-bold text-slate-800 mt-1">${receta.nombre}</h2>
+            <p class="text-[11px] text-slate-500">Produciendo: <b>${uDeseadas} unidades</b> (Base: ${uBase} unid.)</p>
+          </div>
+          <div class="text-right">
+            <span class="text-[10px] text-slate-400 block">Costo Producción</span>
+            <div class="text-base font-bold text-emerald-600 font-mono">₡${costoTotalCRC.toFixed(2)}</div>
+            <div class="text-[11px] text-slate-500 font-mono">$${costoTotalUSD.toFixed(2)} USD</div>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <h3 class="font-bold text-xs text-slate-700">Ingredientes Requeridos</h3>
+            <span class="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold">Harina Base: ${Math.round(harinaTotal)}g</span>
+          </div>
+          <div class="divide-y">${filasHTML}</div>
+        </div>
+
+        ${notasHTML ? `
+          <div class="bg-amber-50/70 border border-amber-200 p-3.5 rounded-xl space-y-1">
+            <h3 class="font-bold text-xs text-amber-900 flex items-center gap-1">⏱️ Fases, Notas & Proceso</h3>
+            <div class="text-xs text-slate-700 leading-relaxed rich-content pt-1">${notasHTML}</div>
+          </div>
+        ` : ''}
+      `;
+    }
+
+    // --- PESTAÑA: GESTOR DE RECETAS (ORDENADO POR USO RECIENTE) ---
+    function renderEditorSelect() {
+      const select = document.getElementById('select-receta-editar');
+      select.innerHTML = '<option value="">-- Crear Nueva Receta --</option>';
+      
+      const ordenadas = obtenerRecetasOrdenadasPorUso();
+      ordenadas.forEach(r => {
+        const esReciente = recientesIDs.includes(String(r.id)) ? ' 🕒' : '';
+        select.innerHTML += `<option value="${r.id}">${r.nombre}${esReciente}</option>`;
+      });
+    }
+
+    function cargarRecetaEnEditor() {
+      const id = document.getElementById('select-receta-editar').value;
+      const btnEliminar = document.getElementById('btn-eliminar-receta');
+      
+      if(!id) {
+        nuevaReceta();
+        return;
+      }
+
+      const receta = recetas.find(r => String(r.id) === String(id));
+      if(!receta) return;
+
+      registrarRecetaUsadaRecientemente(receta.id);
+
+      const uBase = receta.unidadesBase || 1;
+      document.getElementById('receta-id').value = receta.id;
+      document.getElementById('receta-nombre').value = receta.nombre;
+      
+      renderCategoriasSelect(receta.categoria || 'Panadería');
+      
+      document.getElementById('receta-unidades-base').value = uBase;
+      document.getElementById('receta-unidades-anteriores').value = uBase;
+      
+      // Cargar Rich Text en el Editor de Notas
+      document.getElementById('fase-1-editor').innerHTML = receta.fases ? (receta.fases.fase1 || '') : '';
+      
+      const cont = document.getElementById('filas-ingredientes-receta');
+      cont.innerHTML = '';
+      receta.ingredientes.forEach(item => {
+        agregarFilaIngredienteReceta(item);
+      });
+
+      btnEliminar.classList.remove('hidden');
+      calcularCostosEditor();
+    }
+
+    function alCambiarUnidadesBaseEditor() {
+      const uAnt = parseFloat(document.getElementById('receta-unidades-anteriores').value) || 1;
+      const uNuevas = parseFloat(document.getElementById('receta-unidades-base').value) || 1;
+
+      if(uAnt <= 0 || uNuevas <= 0 || uAnt === uNuevas) return;
+
+      const desearEscalar = confirm(`Cambiaste las unidades base de ${uAnt} a ${uNuevas}.\n\n¿Deseas recalcular proporcionalmente las cantidades de los ingredientes?`);
+
+      if(desearEscalar) {
+        const factor = uNuevas / uAnt;
+        const filas = document.querySelectorAll('#filas-ingredientes-receta > div');
+
+        filas.forEach(f => {
+          const inputCant = f.querySelector('.ing-cant');
+          if(inputCant && inputCant.value) {
+            const cantOriginal = parseFloat(inputCant.value) || 0;
+            inputCant.value = Math.round(cantOriginal * factor);
+          }
+        });
+        calcularCostosEditor();
+      }
+
+      document.getElementById('receta-unidades-anteriores').value = uNuevas;
+    }
+
+    function agregarFilaIngredienteReceta(item = { nombre: '', cantidad: '' }) {
+      const cont = document.getElementById('filas-ingredientes-receta');
+      const idx = Date.now() + Math.random();
+
+      let opcionesIng = `<option value="">-- Seleccionar de la lista --</option>`;
+      ingredientes.forEach(i => {
+        const sel = (item.nombre && i.nombre.toLowerCase() === item.nombre.toLowerCase()) ? 'selected' : '';
+        opcionesIng += `<option value="${i.nombre}" ${sel}>${i.nombre}</option>`;
+      });
+
+      const cantEntera = item.cantidad !== '' ? Math.round(item.cantidad) : '';
+
+      const div = document.createElement('div');
+      div.id = `fila-${idx}`;
+      div.className = "flex flex-col sm:flex-row gap-2 items-start sm:items-center bg-slate-50 p-2 rounded-lg border border-slate-200 text-xs";
+      div.innerHTML = `
+        <select class="ing-nombre flex-1 w-full border rounded p-1.5 bg-white font-medium" onchange="calcularCostosEditor()">${opcionesIng}</select>
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+          <input type="number" step="1" min="0" value="${cantEntera}" onchange="calcularCostosEditor()" oninput="calcularCostosEditor()" class="ing-cant w-24 border rounded p-1.5 text-right font-mono" placeholder="Cant. (g)">
+          <div class="lbl-costo-item text-right font-mono text-[11px] w-28 text-slate-600 font-semibold">₡0 (0%)</div>
+          <button type="button" onclick="document.getElementById('fila-${idx}').remove(); calcularCostosEditor();" class="text-red-500 font-bold px-1.5 py-0.5 bg-red-50 rounded">✕</button>
+        </div>
+      `;
+      cont.appendChild(div);
+      calcularCostosEditor();
+    }
+
+    function calcularCostosEditor() {
+      const filas = document.querySelectorAll('#filas-ingredientes-receta > div');
+      let costoTotalCRC = 0;
+      const datosFilas = [];
+
+      filas.forEach(f => {
+        const nom = f.querySelector('.ing-nombre').value;
+        const cant = parseFloat(f.querySelector('.ing-cant').value) || 0;
+        let costoItem = 0;
+
+        if(nom && cant > 0) {
+          const ingCoincidente = ingredientes.find(i => i.nombre.toLowerCase() === nom.toLowerCase());
+          if(ingCoincidente && ingCoincidente.cantidad > 0) {
+            costoItem = (ingCoincidente.precioCRC / ingCoincidente.cantidad) * cant;
+          }
+        }
+
+        costoTotalCRC += costoItem;
+        datosFilas.push({ elementoLabel: f.querySelector('.lbl-costo-item'), costoItem });
+      });
+
+      datosFilas.forEach(d => {
+        if(d.elementoLabel) {
+          const pct = costoTotalCRC > 0 ? ((d.costoItem / costoTotalCRC) * 100).toFixed(1) : '0.0';
+          d.elementoLabel.textContent = `₡${Math.round(d.costoItem)} (${pct}%)`;
+        }
+      });
+
+      const costoTotalUSD = costoTotalCRC / tipoCambioGlobal;
+      document.getElementById('lbl-costo-total-editor').textContent = `₡${Math.round(costoTotalCRC)} ($${costoTotalUSD.toFixed(2)} USD)`;
+    }
+
+    function guardarReceta(e) {
+      e.preventDefault();
+      const idRaw = document.getElementById('receta-id').value;
+      const filas = document.querySelectorAll('#filas-ingredientes-receta > div');
+      const listaIng = [];
+
+      filas.forEach(f => {
+        const nom = f.querySelector('.ing-nombre').value;
+        const cant = parseFloat(f.querySelector('.ing-cant').value);
+        if(nom && !isNaN(cant) && cant > 0) listaIng.push({ nombre: nom, cantidad: Math.round(cant) });
+      });
+
+      const idFinal = idRaw ? idRaw : Date.now();
+
+      const recetaObj = {
+        id: idFinal,
+        nombre: document.getElementById('receta-nombre').value,
+        categoria: document.getElementById('receta-categoria').value,
+        unidadesBase: Math.round(parseFloat(document.getElementById('receta-unidades-base').value)) || 1,
+        ingredientes: listaIng,
+        fases: { fase1: document.getElementById('fase-1-editor').innerHTML }
+      };
+
+      if(idRaw) {
+        recetas = recetas.map(r => String(r.id) === String(idRaw) ? recetaObj : r);
+      } else {
+        recetas.push(recetaObj);
+      }
+
+      registrarRecetaUsadaRecientemente(idFinal);
+      guardarLocal();
+      alert('¡Receta guardada y actualizada exitosamente!');
+      nuevaReceta();
+      switchTab('visor');
+    }
+
+    function eliminarRecetaActual() {
+      const id = document.getElementById('receta-id').value;
+      if(!id) return;
+
+      if(confirm('¿Estás seguro de que deseas eliminar esta receta?')) {
+        recetas = recetas.filter(r => String(r.id) !== String(id));
+        recientesIDs = recientesIDs.filter(i => i !== String(id));
+        guardarLocal();
+        alert('Receta eliminada.');
+        nuevaReceta();
+        switchTab('visor');
+      }
+    }
+
+    function nuevaReceta() {
+      document.getElementById('form-receta').reset();
+      document.getElementById('receta-id').value = '';
+      document.getElementById('select-receta-editar').value = '';
+      document.getElementById('receta-unidades-anteriores').value = 1;
+      document.getElementById('filas-ingredientes-receta').innerHTML = '';
+      document.getElementById('fase-1-editor').innerHTML = '';
+      document.getElementById('btn-eliminar-receta').classList.add('hidden');
+      renderCategoriasSelect();
+      agregarFilaIngredienteReceta();
+      agregarFilaIngredienteReceta();
+      calcularCostosEditor();
+    }
+
+    // --- TABLA DE PRECIOS E INGREDIENTES Y EDITOR DE INSUMOS ---
+    function renderIngredienteSelectEditor() {
+      const select = document.getElementById('select-ingrediente-editar');
+      select.innerHTML = '<option value="">+ Crear Nuevo Ingrediente</option>';
+      ingredientes.forEach(i => {
+        select.innerHTML += `<option value="${i.id}">${i.nombre}</option>`;
+      });
+    }
+
+    function cargarIngredienteEnEditor() {
+      const id = document.getElementById('select-ingrediente-editar').value;
+      const btnEliminar = document.getElementById('btn-eliminar-ingrediente');
+
+      if(!id) {
+        nuevoIngrediente();
+        return;
+      }
+
+      const ing = ingredientes.find(i => String(i.id) === String(id));
+      if(!ing) return;
+
+      document.getElementById('ing-id').value = ing.id;
+      document.getElementById('ing-nombre').value = ing.nombre;
+      document.getElementById('ing-unidad').value = ing.unidad || 'g';
+      document.getElementById('ing-cantidad').value = Math.round(ing.cantidad);
+      document.getElementById('ing-precio').value = Math.round(ing.precioCRC);
+      document.getElementById('ing-notas-editor').innerHTML = ing.notas || '';
+
+      btnEliminar.classList.remove('hidden');
+    }
+
+    function nuevoIngrediente() {
+      document.getElementById('form-ingrediente').reset();
+      document.getElementById('ing-id').value = '';
+      document.getElementById('select-ingrediente-editar').value = '';
+      document.getElementById('ing-notas-editor').innerHTML = '';
+      document.getElementById('btn-eliminar-ingrediente').classList.add('hidden');
+    }
+
+    function renderTablaIngredientes() {
+      const cont = document.getElementById('lista-ingredientes-mobile');
+      document.getElementById('total-ing-count').textContent = ingredientes.length;
+      document.getElementById('input-tipo-cambio').value = tipoCambioGlobal;
+      cont.innerHTML = '';
+
+      ingredientes.forEach(ing => {
+        const cUnidadCRC = ing.cantidad > 0 ? (ing.precioCRC / ing.cantidad) : 0;
+        const cUnidadUSD = cUnidadCRC / tipoCambioGlobal;
+
+        cont.innerHTML += `
+          <div class="p-3 flex justify-between items-start cursor-pointer hover:bg-slate-50" onclick="seleccionarIngredienteParaEditar(${ing.id})">
+            <div>
+              <div class="font-bold text-slate-800">${ing.nombre}</div>
+              <div class="text-[10px] text-slate-500">Paquete: ${Math.round(ing.cantidad)}${ing.unidad} | ₡${Math.round(ing.precioCRC)}</div>
+              ${ing.notas ? `<div class="text-[10px] text-amber-800 italic mt-0.5 rich-content">📝 ${ing.notas}</div>` : ''}
+            </div>
+            <div class="text-right">
+              <span class="font-mono text-indigo-600 font-bold text-xs">₡${cUnidadCRC.toFixed(2)}/${ing.unidad}</span>
+              <div class="text-[10px] text-slate-400 font-mono">$${cUnidadUSD.toFixed(4)} USD</div>
+            </div>
+          </div>`;
+      });
+    }
+
+    function seleccionarIngredienteParaEditar(id) {
+      document.getElementById('select-ingrediente-editar').value = id;
+      cargarIngredienteEnEditor();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function guardarIngrediente(e) {
+      e.preventDefault();
+      const idRaw = document.getElementById('ing-id').value;
+      const nuevoObj = {
+        id: idRaw ? idRaw : Date.now(),
+        nombre: document.getElementById('ing-nombre').value.trim(),
+        unidad: document.getElementById('ing-unidad').value,
+        cantidad: Math.round(parseFloat(document.getElementById('ing-cantidad').value)),
+        precioCRC: Math.round(parseFloat(document.getElementById('ing-precio').value)),
+        notas: document.getElementById('ing-notas-editor').innerHTML
+      };
+
+      if(idRaw) {
+        ingredientes = ingredientes.map(i => String(i.id) === String(idRaw) ? nuevoObj : i);
+      } else {
+        ingredientes.push(nuevoObj);
+      }
+
+      guardarLocal();
+      alert('¡Insumo guardado correctamente!');
+      nuevoIngrediente();
+      renderTablaIngredientes();
+      renderIngredienteSelectEditor();
+      calcularCostosEditor();
+    }
+
+    function eliminarIngredienteActual() {
+      const id = document.getElementById('ing-id').value;
+      if(!id) return;
+
+      if(confirm('¿Deseas eliminar este insumo del catálogo?')) {
+        ingredientes = ingredientes.filter(i => String(i.id) !== String(id));
+        guardarLocal();
+        alert('Insumo eliminado.');
+        nuevoIngrediente();
+        renderTablaIngredientes();
+        renderIngredienteSelectEditor();
+        calcularCostosEditor();
+      }
+    }
+
+    function showStatus(msg, type) {
+      const el = document.getElementById('statusMsg');
+      el.textContent = msg;
+      el.className = `p-3 rounded-lg text-xs font-medium ${type === 'success' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`;
+      el.classList.remove('hidden');
+    }
+
+    // --- BACKUP Y DESCARGAS ---
+    function exportarBackupJSON() {
+      const fecha = new Date().toISOString().slice(0,10);
+
+      const dataIng = { ingredientes, tipoCambioGlobal, fecha: new Date().toISOString() };
+      descargarJSON(dataIng, `Backup_Recetario_Mobile_Ingredientes_${fecha}.json`);
+
+      setTimeout(() => {
+        const dataRec = { recetas, categoriasGuardadas, fecha: new Date().toISOString() };
+        descargarJSON(dataRec, `Backup_Recetario_Mobile_Recetas_${fecha}.json`);
+      }, 300);
+    }
+
+    function descargarJSON(data, nombreArchivo) {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = nombreArchivo;
+      a.click();
+    }
+
+    // --- CARGAR JSON ---
+    function importarBackupJSON(e) {
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+
+      let cargadosIng = false;
+      let cargadosRec = false;
+      let leidos = 0;
+
+      Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          try {
+            const data = JSON.parse(evt.target.result);
+            
+            if (data.ingredientes) {
+              ingredientes = normalizarIngredientes(data.ingredientes);
+              if (data.tipoCambioGlobal) tipoCambioGlobal = data.tipoCambioGlobal;
+              cargadosIng = true;
+            }
+            
+            if (data.recetas) {
+              recetas = data.recetas;
+              if (data.categoriasGuardadas) categoriasGuardadas = data.categoriasGuardadas;
+              cargadosRec = true;
+            }
+
+            leidos++;
+            if (leidos === files.length) {
+              guardarLocal();
+              let msg = "¡Carga completada!";
+              if (cargadosIng && cargadosRec) msg = `¡Se restauraron Insumos (${ingredientes.length}) y Recetas (${recetas.length})!`;
+              else if (cargadosIng) msg = `¡Catálogo de Insumos restaurado! (${ingredientes.length} insumos)`;
+              else if (cargadosRec) msg = `¡Recetario restaurado! (${recetas.length} recetas)`;
+
+              alert(msg);
+              switchTab('visor');
+            }
+          } catch(err) {
+            alert(`Error al procesar el archivo ${file.name}`);
+          }
+        };
+        reader.readAsText(file);
+      });
+    }
+
+    function guardarLocal() {
+      localStorage.setItem('app_ingredientes', JSON.stringify(ingredientes));
+      localStorage.setItem('app_recetas', JSON.stringify(recetas));
+      localStorage.setItem('app_tc', tipoCambioGlobal);
+      localStorage.setItem('app_recientes_ids', JSON.stringify(recientesIDs));
+      localStorage.setItem('app_categorias', JSON.stringify(categoriasGuardadas));
+    }
+
+    // Inicializar
+    switchTab('visor');
+  </script>
+</body>
+</html>
