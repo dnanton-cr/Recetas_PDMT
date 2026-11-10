@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <!-- 
 ================================================================================
+PROYECTO: Recetario Casero, Edición & Dolarización (Firebase FNZ_DB)
+VERSIÓN: v1.5.1
+AUTOR: Daniel Nanton
+================================================================================
+-->
+
+<!-- 
+================================================================================
 PROYECTO: Recetario Casero, Edición & Dolarización
 VERSIÓN: v1.5
 FECHA DE ACTUALIZACIÓN: Septiembre 2026
@@ -23,16 +31,18 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
      en Precios e Ingredientes.
 ================================================================================
 -->
+
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Recetario Casero v1.5 - Edición & Dolarización</title>
+  <title>Recetario Casero v1.5 - FNZ_DB (Firebase)</title>
   
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#4f46e5">
 
+  <!-- Tailwind CSS & XLSX CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   
@@ -41,7 +51,6 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
     body { padding-bottom: 80px; }
     @media (min-width: 768px) { body { padding-bottom: 20px; } }
     
-    /* Estilos para el Editor Rich Text */
     .rich-editor {
       min-height: 80px;
       max-height: 250px;
@@ -67,15 +76,15 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
       <div class="flex items-center gap-2">
         <span class="text-2xl">🍞</span>
         <div>
-          <h1 class="text-lg font-bold leading-tight">Recetario & Gestión de Costos <span class="text-xs font-normal bg-indigo-700 px-1.5 py-0.5 rounded text-indigo-100">v1.5</span></h1>
-          <p class="text-[10px] text-indigo-200">Control Multimoneda (CRC / USD)</p>
+          <h1 class="text-lg font-bold leading-tight">Recetario & Costos <span class="text-xs font-normal bg-indigo-700 px-1.5 py-0.5 rounded text-indigo-100">FNZ_DB</span></h1>
+          <p id="sync-status" class="text-[10px] text-indigo-200">Conectando a Firebase...</p>
         </div>
       </div>
       <div class="flex gap-2 text-xs">
-        <button onclick="exportarBackupJSON()" title="Respaldar datos en 2 archivos JSON" class="bg-indigo-700 hover:bg-indigo-800 px-2.5 py-1.5 rounded flex items-center gap-1 border border-indigo-500">
+        <button onclick="exportarBackupJSON()" title="Respaldar datos en archivos JSON" class="bg-indigo-700 hover:bg-indigo-800 px-2.5 py-1.5 rounded flex items-center gap-1 border border-indigo-500">
           💾 <span class="hidden sm:inline">Backup</span>
         </button>
-        <button onclick="document.getElementById('input-importar-json').click()" title="Cargar JSON (Ingredientes o Recetas)" class="bg-indigo-700 hover:bg-indigo-800 px-2.5 py-1.5 rounded flex items-center gap-1 border border-indigo-500">
+        <button onclick="document.getElementById('input-importar-json').click()" title="Cargar JSON" class="bg-indigo-700 hover:bg-indigo-800 px-2.5 py-1.5 rounded flex items-center gap-1 border border-indigo-500">
           📂 <span class="hidden sm:inline">Cargar JSON</span>
         </button>
         <input type="file" id="input-importar-json" class="hidden" accept=".json" multiple onchange="importarBackupJSON(event)">
@@ -132,9 +141,9 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
     <!-- PESTAÑA 2: EDITAR / CREAR RECETA -->
     <section id="tab-receta-editor" class="hidden space-y-4">
       <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
-        <label class="block text-xs font-bold text-slate-700 mb-1">Seleccionar Receta para Editar o Crear Nueva (Ordenadas por Uso Reciente 🕒):</label>
+        <label class="block text-xs font-bold text-slate-700 mb-1">Seleccionar Receta para Editar o Crear Nueva:</label>
         <select id="select-receta-editar" onchange="cargarRecetaEnEditor()" class="w-full border rounded-lg p-2.5 text-xs bg-slate-50 font-semibold">
-          <!-- Cargar dinámicamente lista de recetas -->
+          <!-- Dinámico -->
         </select>
       </div>
 
@@ -155,7 +164,7 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
             <div>
               <label class="block text-xs font-semibold text-slate-600 mb-1">Categoría</label>
               <select id="receta-categoria" onchange="manejarCambioCategoria(this)" class="w-full border rounded-lg p-2 text-xs bg-white">
-                <!-- Se llena dinámicamente -->
+                <!-- Dinámico -->
               </select>
             </div>
             <div>
@@ -174,9 +183,7 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
             <button type="button" onclick="agregarFilaIngredienteReceta()" class="text-xs bg-indigo-50 text-indigo-600 font-semibold px-2.5 py-1 rounded-lg">+ Agregar Ingrediente</button>
           </div>
           
-          <div id="filas-ingredientes-receta" class="space-y-2">
-            <!-- Dinámico desde lista de ingredientes -->
-          </div>
+          <div id="filas-ingredientes-receta" class="space-y-2"></div>
 
           <div class="pt-2 border-t flex justify-between items-center text-xs font-bold text-slate-700 bg-slate-50 p-2.5 rounded-lg">
             <span>Costo Estimado Base:</span>
@@ -186,8 +193,6 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
 
         <div class="bg-amber-50/70 border border-amber-200 p-4 rounded-xl space-y-3">
           <h3 class="font-bold text-xs text-amber-900 flex items-center gap-1">⏱️ Fases, Notas y Proceso (Rich Text)</h3>
-          
-          <!-- Barra de Herramientas Rich Text -->
           <div class="flex flex-wrap gap-1 bg-white p-1 rounded-t-lg border border-b-0 border-slate-300 text-xs">
             <button type="button" onclick="execCommandRich('bold', 'fase-1-editor')" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 font-bold rounded" title="Negrita">B</button>
             <button type="button" onclick="execCommandRich('italic', 'fase-1-editor')" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 italic rounded" title="Cursiva">I</button>
@@ -196,7 +201,6 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
             <button type="button" onclick="execCommandRich('insertUnorderedList', 'fase-1-editor')" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded" title="Lista Viñetas">• Lista</button>
             <button type="button" onclick="execCommandRich('insertOrderedList', 'fase-1-editor')" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded" title="Lista Numerada">1. Lista</button>
           </div>
-          
           <div id="fase-1-editor" contenteditable="true" placeholder="Fases, apuntes y tiempos del proceso..." class="rich-editor w-full border border-slate-300 rounded-b-lg p-2.5 text-xs bg-white text-slate-800"></div>
         </div>
 
@@ -221,7 +225,7 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
         <div>
           <label class="block text-[11px] font-bold text-slate-700 mb-1">Seleccionar Insumo para Editar o Crear Nuevo:</label>
           <select id="select-ingrediente-editar" onchange="cargarIngredienteEnEditor()" class="w-full border rounded-lg p-2 text-xs bg-slate-50 font-semibold">
-            <!-- Cargar dinámicamente -->
+            <!-- Dinámico -->
           </select>
         </div>
 
@@ -251,16 +255,13 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
           </div>
           
           <div>
-            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Notas / Proveedor / Preparación (Rich Text)</label>
-            <!-- Barra de Herramientas Rich Text para Insumo -->
+            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Notas / Proveedor (Rich Text)</label>
             <div class="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-t-lg border border-b-0 border-slate-300 text-[11px]">
               <button type="button" onclick="execCommandRich('bold', 'ing-notas-editor')" class="px-2 py-0.5 bg-white hover:bg-slate-200 font-bold rounded" title="Negrita">B</button>
               <button type="button" onclick="execCommandRich('italic', 'ing-notas-editor')" class="px-2 py-0.5 bg-white hover:bg-slate-200 italic rounded" title="Cursiva">I</button>
               <button type="button" onclick="execCommandRich('underline', 'ing-notas-editor')" class="px-2 py-0.5 bg-white hover:bg-slate-200 underline rounded" title="Subrayado">U</button>
-              <div class="h-4 w-[1px] bg-slate-300 my-auto mx-1"></div>
-              <button type="button" onclick="execCommandRich('insertUnorderedList', 'ing-notas-editor')" class="px-2 py-0.5 bg-white hover:bg-slate-200 rounded" title="Lista Viñetas">• Lista</button>
             </div>
-            <div id="ing-notas-editor" contenteditable="true" placeholder="Ej. Proveedor Automercado, o pasos para preparar masa madre..." class="rich-editor min-h-[60px] max-h-[120px] w-full border border-slate-300 rounded-b-lg p-2 text-xs bg-slate-50 text-slate-800"></div>
+            <div id="ing-notas-editor" contenteditable="true" placeholder="Proveedor o notas..." class="rich-editor min-h-[60px] max-h-[120px] w-full border border-slate-300 rounded-b-lg p-2 text-xs bg-slate-50 text-slate-800"></div>
           </div>
 
           <div class="flex gap-2">
@@ -272,12 +273,10 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
 
       <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div class="p-3 bg-slate-50 border-b text-xs font-bold text-slate-700 flex justify-between items-center">
-          <span>Catálogo de Insumos</span>
+          <span>Catálogo de Insumos (Firebase)</span>
           <span class="text-[10px] text-slate-500 font-normal">Total: <b id="total-ing-count">0</b></span>
         </div>
-        <div id="lista-ingredientes-mobile" class="divide-y text-xs max-h-96 overflow-y-auto">
-          <!-- Render Dinámico -->
-        </div>
+        <div id="lista-ingredientes-mobile" class="divide-y text-xs max-h-96 overflow-y-auto"></div>
       </div>
     </section>
 
@@ -298,11 +297,11 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
         </div>
 
         <div id="opciones-migracion" class="hidden bg-slate-50 p-4 rounded-xl border space-y-3">
-          <h3 class="text-xs font-bold text-slate-700 border-b pb-1">¿Qué elementos deseas leer y migrar?</h3>
+          <h3 class="text-xs font-bold text-slate-700 border-b pb-1">¿Qué elementos deseas migrar a Firebase?</h3>
           <div class="space-y-2 text-xs">
             <label class="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" id="chk-cargar-ingredientes" checked class="w-4 h-4 text-indigo-600 rounded">
-              <span class="font-medium">Leer y actualizar Catálogo de Precios e Ingredientes ("Datos Ingredientes")</span>
+              <span class="font-medium">Leer e insertar Catálogo de Ingredientes</span>
             </label>
             <label class="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" id="chk-cargar-todas-recetas" checked class="w-4 h-4 text-indigo-600 rounded">
@@ -310,7 +309,7 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
             </label>
           </div>
           <button onclick="ejecutarMigracionExcel()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg shadow">
-            🚀 Procesar Componentes Seleccionados
+            🚀 Procesar y Guardar en Firebase
           </button>
         </div>
 
@@ -322,16 +321,12 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
             <span id="cant-recetas-excel" class="text-[11px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold">0</span>
           </div>
 
-          <select id="select-receta-excel" onchange="mostrarVistaPreviaExcel()" class="w-full border rounded-lg p-2.5 text-xs bg-slate-50 font-bold text-slate-700">
-            <!-- Dinámico -->
-          </select>
+          <select id="select-receta-excel" onchange="mostrarVistaPreviaExcel()" class="w-full border rounded-lg p-2.5 text-xs bg-slate-50 font-bold text-slate-700"></select>
 
-          <div id="vista-previa-receta" class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3 text-xs">
-            <!-- Vista previa dinámico -->
-          </div>
+          <div id="vista-previa-receta" class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3 text-xs"></div>
 
           <button onclick="aprobarEIncluirRecetaActual()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow flex items-center justify-center gap-2">
-            ✅ Aprobar e Incluir solo esta Receta
+            ✅ Aprobar e Incluir solo esta Receta en Firebase
           </button>
         </div>
       </div>
@@ -359,43 +354,74 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
     </button>
   </nav>
 
-  <script>
-    /*
-      ==========================================================================
-      LÓGICA PRINCIPAL DE LA APLICACIÓN - RECETARIO Y COSTOS v1.5
-      ==========================================================================
-    */
-    let tipoCambioGlobal = parseFloat(localStorage.getItem('app_tc')) || 575;
-    let ingredientes = JSON.parse(localStorage.getItem('app_ingredientes')) || [];
-    let recetas = JSON.parse(localStorage.getItem('app_recetas')) || [];
+  <!-- Firebase Scripts y Lógica (Modular SDK v10) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+       apiKey: "AIzaSyB62Ne9JxPxA23h9NJVseLuMGURsTp-hBk",
+       authDomain: "fnz-db.firebaseapp.com",
+       projectId: "fnz-db",
+       storageBucket: "fnz-db.firebasestorage.app",
+       messagingSenderId: "1005621440879",
+       appId: "1:1005621440879:web:b61d1e028989a5de29b89a"
+    };
+
+    let db;
+    let ingredientes = [];
+    let recetas = [];
+    let tipoCambioGlobal = 575;
     let recientesIDs = JSON.parse(localStorage.getItem('app_recientes_ids')) || [];
     let categoriasGuardadas = JSON.parse(localStorage.getItem('app_categorias')) || ["Panadería", "Carnes", "Fermentos", "Sopas", "Helados", "General"];
     
     let recetasExtraidasExcel = [];
     let workbookCargado = null;
 
-    // Normalizador de Insumos para compatibilidad retroactiva
-    function normalizarIngredientes(lista) {
-      if(!Array.isArray(lista)) return [];
-      return lista.map(i => ({
-        id: i.id || Date.now() + Math.random(),
-        nombre: i.nombre || 'Sin Nombre',
-        unidad: i.unidad || 'g',
-        cantidad: Math.round(parseFloat(i.cantidad) || 1000),
-        precioCRC: Math.round(parseFloat(i.precioCRC) || 0),
-        notas: i.notas || ''
-      }));
-    }
+    window.addEventListener('DOMContentLoaded', () => {
+      const statusBadge = document.getElementById('sync-status');
+      try {
+        const app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
 
-    ingredientes = normalizarIngredientes(ingredientes);
+        // Sincronización en tiempo real: Ingredientes
+        onSnapshot(collection(db, "ingredients"), (snapshot) => {
+          ingredientes = [];
+          snapshot.forEach((docSnap) => {
+            ingredientes.push({ id: docSnap.id, ...docSnap.data() });
+          });
+          statusBadge.innerText = "Sincronizado con FNZ_DB";
+          renderTablaIngredientes();
+          renderIngredienteSelectEditor();
+          if(document.getElementById('tab-receta-editor').classList.contains('block') || !document.getElementById('tab-receta-editor').classList.contains('hidden')) {
+            // Actualizar selects de ingredientes en recetas si es necesario
+          }
+        }, (error) => {
+          console.error("Error ingredientes:", error);
+          statusBadge.innerText = "Error de Conexión Insumos";
+        });
 
-    // Ejecutor de comandos Rich Text
-    function execCommandRich(command, editorId) {
-      document.getElementById(editorId).focus();
-      document.execCommand(command, false, null);
-    }
+        // Sincronización en tiempo real: Recetas
+        onSnapshot(collection(db, "recipes"), (snapshot) => {
+          recetas = [];
+          snapshot.forEach((docSnap) => {
+            recetas.push({ id: docSnap.id, ...docSnap.data() });
+          });
+          switchTab('visor');
+        }, (error) => {
+          console.error("Error recetas:", error);
+          statusBadge.innerText = "Error de Conexión Recetas";
+        });
 
-    function switchTab(tab) {
+      } catch (e) {
+        console.error("Error Firebase:", e);
+        statusBadge.innerText = "Error de Configuración Firebase";
+      }
+    });
+
+    // Exponer funciones globales para eventos en HTML
+    window.switchTab = function(tab) {
       ['visor', 'receta-editor', 'ingredientes', 'excel'].forEach(t => {
         const el = document.getElementById(`tab-${t}`);
         if (el) el.classList.toggle('hidden', t !== tab);
@@ -418,21 +444,23 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
       }
     }
 
-    // --- MANEJO DE CATEGORÍAS ---
-    function renderCategoriasSelect(categoriaSeleccionada = '') {
+    window.execCommandRich = function(command, editorId) {
+      document.getElementById(editorId).focus();
+      document.execCommand(command, false, null);
+    }
+
+    window.renderCategoriasSelect = function(categoriaSeleccionada = '') {
       const select = document.getElementById('receta-categoria');
+      if(!select) return;
       select.innerHTML = '';
-      
-      // Categorías estándar y personalizadas
       categoriasGuardadas.forEach(cat => {
         const sel = cat === categoriaSeleccionada ? 'selected' : '';
         select.innerHTML += `<option value="${cat}" ${sel}>${cat}</option>`;
       });
-
       select.innerHTML += `<option value="__NUEVA__" class="font-bold text-indigo-600">➕ Agregar nueva categoría...</option>`;
     }
 
-    function manejarCambioCategoria(selectEl) {
+    window.manejarCambioCategoria = function(selectEl) {
       if(selectEl.value === '__NUEVA__') {
         const nuevaCat = prompt("Ingresa el nombre de la nueva categoría:");
         if(nuevaCat && nuevaCat.trim() !== "") {
@@ -448,18 +476,17 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
       }
     }
 
-    function actualizarTipoCambio() {
+    window.actualizarTipoCambio = function() {
       const val = parseFloat(document.getElementById('input-tipo-cambio').value);
       if(val > 0) {
         tipoCambioGlobal = val;
-        localStorage.setItem('app_tc', tipoCambioGlobal);
         renderTablaIngredientes();
         recalcularVisor();
         calcularCostosEditor();
       }
     }
 
-    function ajustarUnidades(delta) {
+    window.ajustarUnidades = function(delta) {
       const input = document.getElementById('input-unidades-deseadas');
       let val = (parseFloat(input.value) || 1) + delta;
       if(val < 0.5) val = 0.5;
@@ -489,227 +516,20 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
       return ordenadas;
     }
 
-    // --- MIGRACIÓN DE EXCEL ---
-    function alSeleccionarArchivoExcel(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function(evt) {
-        try {
-          const data = new Uint8Array(evt.target.result);
-          workbookCargado = XLSX.read(data, { type: 'array' });
-          document.getElementById('opciones-migracion').classList.remove('hidden');
-          showStatus('Archivo cargado. Selecciona los componentes a migrar.', 'success');
-        } catch (err) {
-          console.error(err);
-          showStatus('Error al leer el archivo Excel.', 'error');
-        }
-      };
-      reader.readAsArrayBuffer(file);
-    }
-
-    function ejecutarMigracionExcel() {
-      if(!workbookCargado) return;
-
-      const cargarIng = document.getElementById('chk-cargar-ingredientes').checked;
-      const cargarTodasRecetas = document.getElementById('chk-cargar-todas-recetas').checked;
-
-      if(cargarIng && workbookCargado.SheetNames.includes('Datos Ingredientes')) {
-        const sheetIng = workbookCargado.Sheets['Datos Ingredientes'];
-        const jsonIng = XLSX.utils.sheet_to_json(sheetIng, { header: 1 });
-        extraerDatosIngredientesExcel(jsonIng);
-      }
-
-      const pestañasOmite = ['Acerca de', 'Uso Maquina', 'Menu', 'Datos Ingredientes', 'Proveedores', 'Calcular', 'Calcular produccion', 'Recetas'];
-      recetasExtraidasExcel = [];
-
-      workbookCargado.SheetNames.forEach(sheetName => {
-        if(!pestañasOmite.includes(sheetName)) {
-          const worksheet = workbookCargado.Sheets[sheetName];
-          const jsonRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-          if(jsonRows.length > 5) {
-            const receta = extraerRecetaDePestaña(sheetName, jsonRows);
-            if(receta.ingredientes.length > 0) recetasExtraidasExcel.push(receta);
-          }
-        }
-      });
-
-      if(cargarTodasRecetas && recetasExtraidasExcel.length > 0) {
-        recetasExtraidasExcel.forEach(rExcel => {
-          const nuevaReceta = {
-            id: Date.now() + Math.random(),
-            nombre: rExcel.nombre,
-            categoria: rExcel.categoria,
-            unidadesBase: rExcel.unidadesBase,
-            ingredientes: rExcel.ingredientes,
-            fases: rExcel.fases
-          };
-          recetas = recetas.filter(r => r.nombre !== nuevaReceta.nombre);
-          recetas.push(nuevaReceta);
-        });
-        guardarLocal();
-      }
-
-      if(recetasExtraidasExcel.length > 0) {
-        document.getElementById('panel-revision-excel').classList.remove('hidden');
-        document.getElementById('cant-recetas-excel').textContent = `${recetasExtraidasExcel.length} encontradas`;
-        
-        const select = document.getElementById('select-receta-excel');
-        select.innerHTML = '';
-        recetasExtraidasExcel.forEach((r, idx) => {
-          select.innerHTML += `<option value="${idx}">${r.nombre} (${r.unidadesBase} unid. / ${r.ingredientes.length} ing.)</option>`;
-        });
-
-        mostrarVistaPreviaExcel();
-      }
-
-      showStatus(`Proceso completado. (${ingredientes.length} insumos y ${recetas.length} recetas en sistema)`, 'success');
-      renderTablaIngredientes();
-      renderIngredienteSelectEditor();
-    }
-
-    function extraerDatosIngredientesExcel(rows) {
-      if (rows.length < 2) return;
-      
-      const nuevosIngredientes = [];
-      for (let i = 1; i < rows.length; i++) {
-        const r = rows[i];
-        if (!r || !r[0]) continue;
-
-        const nombreMarca = String(r[0]).trim();
-        const costoCRC = Math.round(parseFloat(r[3]) || 0);
-        const cantidadPkg = Math.round(parseFloat(r[4]) || 1000);
-
-        nuevosIngredientes.push({
-          id: i,
-          nombre: nombreMarca,
-          unidad: 'g',
-          cantidad: cantidadPkg,
-          precioCRC: costoCRC,
-          notas: ''
-        });
-      }
-
-      if(nuevosIngredientes.length > 0) {
-        ingredientes = nuevosIngredientes;
-        guardarLocal();
-      }
-    }
-
-    function extraerRecetaDePestaña(nombreReceta, rows) {
-      const listaIngredientes = [];
-      
-      for(let i = 1; i <= 11; i++) {
-        if(rows[i] && rows[i][0] && rows[i][1]) {
-          const nombreIng = String(rows[i][0]).trim();
-          const cant = parseFloat(rows[i][1]);
-          if(nombreIng && !isNaN(cant) && cant > 0) {
-            listaIngredientes.push({ nombre: nombreIng, cantidad: Math.round(cant) });
-          }
-        }
-      }
-
-      let unidades = 1;
-      for (let i = 0; i < rows.length; i++) {
-        if (rows[i] && rows[i][0]) {
-          const colA = String(rows[i][0]).trim().toLowerCase();
-          if (colA.includes("cantidad unidades")) {
-            const valB = parseFloat(rows[i][1]);
-            if (!isNaN(valB) && valB > 0) {
-              unidades = Math.round(valB);
-              break;
-            }
-          }
-        }
-      }
-
-      let fasesTexto = "";
-      for(let i = 30; i < 38; i++) {
-        if(rows[i] && rows[i][3]) {
-          const paso = String(rows[i][3]).trim();
-          const val = rows[i][4] ? ` (${rows[i][4]})` : '';
-          fasesTexto += `• ${paso}${val}<br>`;
-        }
-      }
-
-      return {
-        nombre: nombreReceta,
-        categoria: "Panadería",
-        unidadesBase: unidades,
-        ingredientes: listaIngredientes,
-        fases: { fase1: fasesTexto || "Proceso estándar registrado." }
-      };
-    }
-
-    function mostrarVistaPreviaExcel() {
-      const idx = document.getElementById('select-receta-excel').value;
-      const r = recetasExtraidasExcel[idx];
-      const cont = document.getElementById('vista-previa-receta');
-      if(!r) return;
-
-      let harinaTotal = 0;
-      r.ingredientes.forEach(item => {
-        if(item.nombre.toLowerCase().includes('harina')) harinaTotal += item.cantidad;
-      });
-      if(harinaTotal === 0) harinaTotal = r.ingredientes[0].cantidad;
-
-      let ingHTML = '';
-      r.ingredientes.forEach(item => {
-        const pctPanadero = ((item.cantidad / harinaTotal) * 100).toFixed(1);
-        ingHTML += `<div class="flex justify-between py-1 border-b text-[11px]">
-          <span>${item.nombre}</span>
-          <div>
-            <span class="font-bold font-mono">${Math.round(item.cantidad)} g</span>
-            <span class="text-[10px] text-indigo-600 font-bold ml-2">(${pctPanadero}%)</span>
-          </div>
-        </div>`;
-      });
-
-      cont.innerHTML = `
-        <div class="flex justify-between items-center">
-          <span class="font-bold text-sm text-indigo-700">${r.nombre}</span>
-          <span class="text-xs bg-indigo-100 text-indigo-800 font-bold px-2 py-0.5 rounded-full">Base: ${r.unidadesBase} unidades</span>
-        </div>
-        <div class="bg-white p-2 rounded-lg border max-h-40 overflow-y-auto">${ingHTML}</div>`;
-    }
-
-    function aprobarEIncluirRecetaActual() {
-      const idx = document.getElementById('select-receta-excel').value;
-      const rExcel = recetasExtraidasExcel[idx];
-      if(!rExcel) return;
-
-      const nuevaReceta = {
-        id: Date.now(),
-        nombre: rExcel.nombre,
-        categoria: rExcel.categoria,
-        unidadesBase: rExcel.unidadesBase,
-        ingredientes: rExcel.ingredientes,
-        fases: rExcel.fases
-      };
-
-      recetas = recetas.filter(r => r.nombre !== nuevaReceta.nombre);
-      recetas.push(nuevaReceta);
-      guardarLocal();
-      alert(`¡Receta "${nuevaReceta.nombre}" aprobada e incluida con éxito!`);
-      switchTab('visor');
-    }
-
-    // --- VISOR DE RECETAS (ORDENADO POR USO RECIENTE) ---
-    function renderVisorSelect() {
+    // --- VISOR ---
+    window.renderVisorSelect = function() {
       const select = document.getElementById('select-receta-visor');
+      if(!select) return;
       select.innerHTML = '';
-
       const ordenadas = obtenerRecetasOrdenadasPorUso();
       ordenadas.forEach(r => {
         const esReciente = recientesIDs.includes(String(r.id)) ? ' 🕒' : '';
         select.innerHTML += `<option value="${r.id}">${r.nombre} (${r.unidadesBase || 1} unid.)${esReciente}</option>`;
       });
-
       cargarRecetaEnVisor();
     }
 
-    function cargarRecetaEnVisor() {
+    window.cargarRecetaEnVisor = function() {
       const id = document.getElementById('select-receta-visor').value;
       const receta = recetas.find(r => String(r.id) === String(id));
       if(receta) {
@@ -721,13 +541,14 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
       recalcularVisor();
     }
 
-    function recalcularVisor() {
+    window.recalcularVisor = function() {
       const id = document.getElementById('select-receta-visor').value;
       const receta = recetas.find(r => String(r.id) === String(id));
       const visor = document.getElementById('contenido-visor');
+      if(!visor) return;
 
       if(!receta) {
-        visor.innerHTML = `<p class="text-slate-400 text-center text-xs">No hay recetas en el recetario.</p>`;
+        visor.innerHTML = `<p class="text-slate-400 text-center text-xs">No hay recetas disponibles en Firebase.</p>`;
         return;
       }
 
@@ -773,8 +594,6 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
       });
 
       const costoTotalUSD = costoTotalCRC / tipoCambioGlobal;
-
-      // Recuperar notas formateadas o simples
       let notasHTML = receta.fases ? (receta.fases.fase1 || '') : '';
       if(notasHTML && !notasHTML.includes('<')) {
         notasHTML = notasHTML.replace(/\n/g, '<br>');
@@ -811,11 +630,11 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
       `;
     }
 
-    // --- PESTAÑA: GESTOR DE RECETAS (ORDENADO POR USO RECIENTE) ---
-    function renderEditorSelect() {
+    // --- EDITOR DE RECETAS ---
+    window.renderEditorSelect = function() {
       const select = document.getElementById('select-receta-editar');
+      if(!select) return;
       select.innerHTML = '<option value="">-- Crear Nueva Receta --</option>';
-      
       const ordenadas = obtenerRecetasOrdenadasPorUso();
       ordenadas.forEach(r => {
         const esReciente = recientesIDs.includes(String(r.id)) ? ' 🕒' : '';
@@ -823,12 +642,12 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
       });
     }
 
-    function cargarRecetaEnEditor() {
+    window.cargarRecetaEnEditor = function() {
       const id = document.getElementById('select-receta-editar').value;
       const btnEliminar = document.getElementById('btn-eliminar-receta');
       
       if(!id) {
-        nuevaReceta();
+        window.nuevaReceta();
         return;
       }
 
@@ -836,55 +655,43 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
       if(!receta) return;
 
       registrarRecetaUsadaRecientemente(receta.id);
-
       const uBase = receta.unidadesBase || 1;
       document.getElementById('receta-id').value = receta.id;
       document.getElementById('receta-nombre').value = receta.nombre;
-      
       renderCategoriasSelect(receta.categoria || 'Panadería');
-      
       document.getElementById('receta-unidades-base').value = uBase;
       document.getElementById('receta-unidades-anteriores').value = uBase;
-      
-      // Cargar Rich Text en el Editor de Notas
       document.getElementById('fase-1-editor').innerHTML = receta.fases ? (receta.fases.fase1 || '') : '';
       
       const cont = document.getElementById('filas-ingredientes-receta');
       cont.innerHTML = '';
       receta.ingredientes.forEach(item => {
-        agregarFilaIngredienteReceta(item);
+        window.agregarFilaIngredienteReceta(item);
       });
 
       btnEliminar.classList.remove('hidden');
       calcularCostosEditor();
     }
 
-    function alCambiarUnidadesBaseEditor() {
+    window.alCambiarUnidadesBaseEditor = function() {
       const uAnt = parseFloat(document.getElementById('receta-unidades-anteriores').value) || 1;
       const uNuevas = parseFloat(document.getElementById('receta-unidades-base').value) || 1;
-
       if(uAnt <= 0 || uNuevas <= 0 || uAnt === uNuevas) return;
 
-      const desearEscalar = confirm(`Cambiaste las unidades base de ${uAnt} a ${uNuevas}.\n\n¿Deseas recalcular proporcionalmente las cantidades de los ingredientes?`);
-
-      if(desearEscalar) {
+      if(confirm(`Cambiaste las unidades base de ${uAnt} a ${uNuevas}.\n\n¿Deseas recalcular proporcionalmente las cantidades de los ingredientes?`)) {
         const factor = uNuevas / uAnt;
-        const filas = document.querySelectorAll('#filas-ingredientes-receta > div');
-
-        filas.forEach(f => {
+        document.querySelectorAll('#filas-ingredientes-receta > div').forEach(f => {
           const inputCant = f.querySelector('.ing-cant');
           if(inputCant && inputCant.value) {
-            const cantOriginal = parseFloat(inputCant.value) || 0;
-            inputCant.value = Math.round(cantOriginal * factor);
+            inputCant.value = Math.round((parseFloat(inputCant.value) || 0) * factor);
           }
         });
         calcularCostosEditor();
       }
-
       document.getElementById('receta-unidades-anteriores').value = uNuevas;
     }
 
-    function agregarFilaIngredienteReceta(item = { nombre: '', cantidad: '' }) {
+    window.agregarFilaIngredienteReceta = function(item = { nombre: '', cantidad: '' }) {
       const cont = document.getElementById('filas-ingredientes-receta');
       const idx = Date.now() + Math.random();
 
@@ -895,7 +702,6 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
       });
 
       const cantEntera = item.cantidad !== '' ? Math.round(item.cantidad) : '';
-
       const div = document.createElement('div');
       div.id = `fila-${idx}`;
       div.className = "flex flex-col sm:flex-row gap-2 items-start sm:items-center bg-slate-50 p-2 rounded-lg border border-slate-200 text-xs";
@@ -911,7 +717,7 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
       calcularCostosEditor();
     }
 
-    function calcularCostosEditor() {
+    window.calcularCostosEditor = function() {
       const filas = document.querySelectorAll('#filas-ingredientes-receta > div');
       let costoTotalCRC = 0;
       const datosFilas = [];
@@ -927,7 +733,6 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
             costoItem = (ingCoincidente.precioCRC / ingCoincidente.cantidad) * cant;
           }
         }
-
         costoTotalCRC += costoItem;
         datosFilas.push({ elementoLabel: f.querySelector('.lbl-costo-item'), costoItem });
       });
@@ -939,11 +744,13 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
         }
       });
 
-      const costoTotalUSD = costoTotalCRC / tipoCambioGlobal;
-      document.getElementById('lbl-costo-total-editor').textContent = `₡${Math.round(costoTotalCRC)} ($${costoTotalUSD.toFixed(2)} USD)`;
+      const lbl = document.getElementById('lbl-costo-total-editor');
+      if(lbl) {
+        lbl.textContent = `₡${Math.round(costoTotalCRC)} ($${(costoTotalCRC / tipoCambioGlobal).toFixed(2)} USD)`;
+      }
     }
 
-    function guardarReceta(e) {
+    window.guardarReceta = async function(e) {
       e.preventDefault();
       const idRaw = document.getElementById('receta-id').value;
       const filas = document.querySelectorAll('#filas-ingredientes-receta > div');
@@ -955,10 +762,7 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
         if(nom && !isNaN(cant) && cant > 0) listaIng.push({ nombre: nom, cantidad: Math.round(cant) });
       });
 
-      const idFinal = idRaw ? idRaw : Date.now();
-
       const recetaObj = {
-        id: idFinal,
         nombre: document.getElementById('receta-nombre').value,
         categoria: document.getElementById('receta-categoria').value,
         unidadesBase: Math.round(parseFloat(document.getElementById('receta-unidades-base').value)) || 1,
@@ -966,34 +770,38 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
         fases: { fase1: document.getElementById('fase-1-editor').innerHTML }
       };
 
-      if(idRaw) {
-        recetas = recetas.map(r => String(r.id) === String(idRaw) ? recetaObj : r);
-      } else {
-        recetas.push(recetaObj);
+      try {
+        if(idRaw) {
+          await updateDoc(doc(db, "recipes", idRaw), recetaObj);
+          registrarRecetaUsadaRecientemente(idRaw);
+        } else {
+          const docRef = await addDoc(collection(db, "recipes"), recetaObj);
+          registrarRecetaUsadaRecientemente(docRef.id);
+        }
+        alert('¡Receta guardada en Firebase exitosamente!');
+        window.nuevaReceta();
+        switchTab('visor');
+      } catch (err) {
+        alert("Error al guardar receta: " + err.message);
       }
-
-      registrarRecetaUsadaRecientemente(idFinal);
-      guardarLocal();
-      alert('¡Receta guardada y actualizada exitosamente!');
-      nuevaReceta();
-      switchTab('visor');
     }
 
-    function eliminarRecetaActual() {
+    window.eliminarRecetaActual = async function() {
       const id = document.getElementById('receta-id').value;
       if(!id) return;
-
-      if(confirm('¿Estás seguro de que deseas eliminar esta receta?')) {
-        recetas = recetas.filter(r => String(r.id) !== String(id));
-        recientesIDs = recientesIDs.filter(i => i !== String(id));
-        guardarLocal();
-        alert('Receta eliminada.');
-        nuevaReceta();
-        switchTab('visor');
+      if(confirm('¿Deseas eliminar esta receta de Firebase?')) {
+        try {
+          await deleteDoc(doc(db, "recipes", id));
+          alert('Receta eliminada.');
+          window.nuevaReceta();
+          switchTab('visor');
+        } catch(err) {
+          alert("Error al eliminar: " + err.message);
+        }
       }
     }
 
-    function nuevaReceta() {
+    window.nuevaReceta = function() {
       document.getElementById('form-receta').reset();
       document.getElementById('receta-id').value = '';
       document.getElementById('select-receta-editar').value = '';
@@ -1002,29 +810,28 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
       document.getElementById('fase-1-editor').innerHTML = '';
       document.getElementById('btn-eliminar-receta').classList.add('hidden');
       renderCategoriasSelect();
-      agregarFilaIngredienteReceta();
-      agregarFilaIngredienteReceta();
+      window.agregarFilaIngredienteReceta();
+      window.agregarFilaIngredienteReceta();
       calcularCostosEditor();
     }
 
-    // --- TABLA DE PRECIOS E INGREDIENTES Y EDITOR DE INSUMOS ---
-    function renderIngredienteSelectEditor() {
+    // --- INGREDIENTES / PRECIOS ---
+    window.renderIngredienteSelectEditor = function() {
       const select = document.getElementById('select-ingrediente-editar');
+      if(!select) return;
       select.innerHTML = '<option value="">+ Crear Nuevo Ingrediente</option>';
       ingredientes.forEach(i => {
         select.innerHTML += `<option value="${i.id}">${i.nombre}</option>`;
       });
     }
 
-    function cargarIngredienteEnEditor() {
+    window.cargarIngredienteEnEditor = function() {
       const id = document.getElementById('select-ingrediente-editar').value;
       const btnEliminar = document.getElementById('btn-eliminar-ingrediente');
-
       if(!id) {
-        nuevoIngrediente();
+        window.nuevoIngrediente();
         return;
       }
-
       const ing = ingredientes.find(i => String(i.id) === String(id));
       if(!ing) return;
 
@@ -1034,11 +841,10 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
       document.getElementById('ing-cantidad').value = Math.round(ing.cantidad);
       document.getElementById('ing-precio').value = Math.round(ing.precioCRC);
       document.getElementById('ing-notas-editor').innerHTML = ing.notas || '';
-
       btnEliminar.classList.remove('hidden');
     }
 
-    function nuevoIngrediente() {
+    window.nuevoIngrediente = function() {
       document.getElementById('form-ingrediente').reset();
       document.getElementById('ing-id').value = '';
       document.getElementById('select-ingrediente-editar').value = '';
@@ -1046,10 +852,14 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
       document.getElementById('btn-eliminar-ingrediente').classList.add('hidden');
     }
 
-    function renderTablaIngredientes() {
+    window.renderTablaIngredientes = function() {
       const cont = document.getElementById('lista-ingredientes-mobile');
-      document.getElementById('total-ing-count').textContent = ingredientes.length;
-      document.getElementById('input-tipo-cambio').value = tipoCambioGlobal;
+      const countEl = document.getElementById('total-ing-count');
+      const tcEl = document.getElementById('input-tipo-cambio');
+      if(!cont) return;
+
+      countEl.textContent = ingredientes.length;
+      tcEl.value = tipoCambioGlobal;
       cont.innerHTML = '';
 
       ingredientes.forEach(ing => {
@@ -1057,7 +867,7 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
         const cUnidadUSD = cUnidadCRC / tipoCambioGlobal;
 
         cont.innerHTML += `
-          <div class="p-3 flex justify-between items-start cursor-pointer hover:bg-slate-50" onclick="seleccionarIngredienteParaEditar(${ing.id})">
+          <div class="p-3 flex justify-between items-start cursor-pointer hover:bg-slate-50" onclick="seleccionarIngredienteParaEditar('${ing.id}')">
             <div>
               <div class="font-bold text-slate-800">${ing.nombre}</div>
               <div class="text-[10px] text-slate-500">Paquete: ${Math.round(ing.cantidad)}${ing.unidad} | ₡${Math.round(ing.precioCRC)}</div>
@@ -1071,17 +881,16 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
       });
     }
 
-    function seleccionarIngredienteParaEditar(id) {
+    window.seleccionarIngredienteParaEditar = function(id) {
       document.getElementById('select-ingrediente-editar').value = id;
-      cargarIngredienteEnEditor();
+      window.cargarIngredienteEnEditor();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    function guardarIngrediente(e) {
+    window.guardarIngrediente = async function(e) {
       e.preventDefault();
       const idRaw = document.getElementById('ing-id').value;
       const nuevoObj = {
-        id: idRaw ? idRaw : Date.now(),
         nombre: document.getElementById('ing-nombre').value.trim(),
         unidad: document.getElementById('ing-unidad').value,
         cantidad: Math.round(parseFloat(document.getElementById('ing-cantidad').value)),
@@ -1089,32 +898,204 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
         notas: document.getElementById('ing-notas-editor').innerHTML
       };
 
-      if(idRaw) {
-        ingredientes = ingredientes.map(i => String(i.id) === String(idRaw) ? nuevoObj : i);
-      } else {
-        ingredientes.push(nuevoObj);
-      }
-
-      guardarLocal();
-      alert('¡Insumo guardado correctamente!');
-      nuevoIngrediente();
-      renderTablaIngredientes();
-      renderIngredienteSelectEditor();
-      calcularCostosEditor();
-    }
-
-    function eliminarIngredienteActual() {
-      const id = document.getElementById('ing-id').value;
-      if(!id) return;
-
-      if(confirm('¿Deseas eliminar este insumo del catálogo?')) {
-        ingredientes = ingredientes.filter(i => String(i.id) !== String(id));
-        guardarLocal();
-        alert('Insumo eliminado.');
-        nuevoIngrediente();
+      try {
+        if(idRaw) {
+          await updateDoc(doc(db, "ingredients", idRaw), nuevoObj);
+        } else {
+          await addDoc(collection(db, "ingredients"), nuevoObj);
+        }
+        alert('¡Insumo guardado en Firebase!');
+        window.nuevoIngrediente();
         renderTablaIngredientes();
         renderIngredienteSelectEditor();
-        calcularCostosEditor();
+      } catch(err) {
+        alert("Error al guardar ingrediente: " + err.message);
+      }
+    }
+
+    window.eliminarIngredienteActual = async function() {
+      const id = document.getElementById('ing-id').value;
+      if(!id) return;
+      if(confirm('¿Deseas eliminar este insumo de Firebase?')) {
+        try {
+          await deleteDoc(doc(db, "ingredients", id));
+          alert('Insumo eliminado.');
+          window.nuevoIngrediente();
+          renderTablaIngredientes();
+          renderIngredienteSelectEditor();
+        } catch(err) {
+          alert("Error al eliminar: " + err.message);
+        }
+      }
+    }
+
+    // --- MIGRACIÓN EXCEL & BACKUP ---
+    window.alSeleccionarArchivoExcel = function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const data = new Uint8Array(evt.target.result);
+          workbookCargado = XLSX.read(data, { type: 'array' });
+          document.getElementById('opciones-migracion').classList.remove('hidden');
+          showStatus('Archivo cargado. Selecciona los componentes a migrar.', 'success');
+        } catch (err) {
+          showStatus('Error al leer el archivo Excel.', 'error');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    window.ejecutarMigracionExcel = async function() {
+      if(!workbookCargado) return;
+      const cargarIng = document.getElementById('chk-cargar-ingredientes').checked;
+      const cargarTodasRecetas = document.getElementById('chk-cargar-todas-recetas').checked;
+
+      if(cargarIng && workbookCargado.SheetNames.includes('Datos Ingredientes')) {
+        const sheetIng = workbookCargado.Sheets['Datos Ingredientes'];
+        const jsonIng = XLSX.utils.sheet_to_json(sheetIng, { header: 1 });
+        for(let i = 1; i < jsonIng.length; i++) {
+          const r = jsonIng[i];
+          if(!r || !r[0]) continue;
+          await addDoc(collection(db, "ingredients"), {
+            nombre: String(r[0]).trim(),
+            unidad: 'g',
+            cantidad: Math.round(parseFloat(r[4]) || 1000),
+            precioCRC: Math.round(parseFloat(r[3]) || 0),
+            notas: ''
+          });
+        }
+      }
+
+      const pestañasOmite = ['Acerca de', 'Uso Maquina', 'Menu', 'Datos Ingredientes', 'Proveedores', 'Calcular', 'Calcular produccion', 'Recetas'];
+      recetasExtraidasExcel = [];
+
+      workbookCargado.SheetNames.forEach(sheetName => {
+        if(!pestañasOmite.includes(sheetName)) {
+          const worksheet = workbookCargado.Sheets[sheetName];
+          const jsonRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          if(jsonRows.length > 5) {
+            const receta = extraerRecetaDePestaña(sheetName, jsonRows);
+            if(receta.ingredientes.length > 0) recetasExtraidasExcel.push(receta);
+          }
+        }
+      });
+
+      if(cargarTodasRecetas && recetasExtraidasExcel.length > 0) {
+        for(let rExcel of recetasExtraidasExcel) {
+          await addDoc(collection(db, "recipes"), {
+            nombre: rExcel.nombre,
+            categoria: rExcel.categoria,
+            unidadesBase: rExcel.unidadesBase,
+            ingredientes: rExcel.ingredientes,
+            fases: rExcel.fases
+          });
+        }
+      }
+
+      if(recetasExtraidasExcel.length > 0) {
+        document.getElementById('panel-revision-excel').classList.remove('hidden');
+        document.getElementById('cant-recetas-excel').textContent = `${recetasExtraidasExcel.length} encontradas`;
+        const select = document.getElementById('select-receta-excel');
+        select.innerHTML = '';
+        recetasExtraidasExcel.forEach((r, idx) => {
+          select.innerHTML += `<option value="${idx}">${r.nombre} (${r.unidadesBase} unid. / ${r.ingredientes.length} ing.)</option>`;
+        });
+        mostrarVistaPreviaExcel();
+      }
+      showStatus('Migración masiva completada en Firebase.', 'success');
+    }
+
+    function extraerRecetaDePestaña(nombreReceta, rows) {
+      const listaIngredientes = [];
+      for(let i = 1; i <= 11; i++) {
+        if(rows[i] && rows[i][0] && rows[i][1]) {
+          const nombreIng = String(rows[i][0]).trim();
+          const cant = parseFloat(rows[i][1]);
+          if(nombreIng && !isNaN(cant) && cant > 0) {
+            listaIngredientes.push({ nombre: nombreIng, cantidad: Math.round(cant) });
+          }
+        }
+      }
+
+      let unidades = 1;
+      for (let i = 0; i < rows.length; i++) {
+        if (rows[i] && rows[i][0]) {
+          const colA = String(rows[i][0]).trim().toLowerCase();
+          if (colA.includes("cantidad unidades")) {
+            const valB = parseFloat(rows[i][1]);
+            if (!isNaN(valB) && valB > 0) { unidades = Math.round(valB); break; }
+          }
+        }
+      }
+
+      let fasesTexto = "";
+      for(let i = 30; i < 38; i++) {
+        if(rows[i] && rows[i][3]) {
+          const paso = String(rows[i][3]).trim();
+          const val = rows[i][4] ? ` (${rows[i][4]})` : '';
+          fasesTexto += `• ${paso}${val}<br>`;
+        }
+      }
+
+      return {
+        nombre: nombreReceta,
+        categoria: "Panadería",
+        unidadesBase: unidades,
+        ingredientes: listaIngredientes,
+        fases: { fase1: fasesTexto || "Proceso estándar registrado." }
+      };
+    }
+
+    window.mostrarVistaPreviaExcel = function() {
+      const idx = document.getElementById('select-receta-excel').value;
+      const r = recetasExtraidasExcel[idx];
+      const cont = document.getElementById('vista-previa-receta');
+      if(!r || !cont) return;
+
+      let harinaTotal = 0;
+      r.ingredientes.forEach(item => {
+        if(item.nombre.toLowerCase().includes('harina')) harinaTotal += item.cantidad;
+      });
+      if(harinaTotal === 0) harinaTotal = r.ingredientes[0].cantidad;
+
+      let ingHTML = '';
+      r.ingredientes.forEach(item => {
+        const pctPanadero = ((item.cantidad / harinaTotal) * 100).toFixed(1);
+        ingHTML += `<div class="flex justify-between py-1 border-b text-[11px]">
+          <span>${item.nombre}</span>
+          <div>
+            <span class="font-bold font-mono">${Math.round(item.cantidad)} g</span>
+            <span class="text-[10px] text-indigo-600 font-bold ml-2">(${pctPanadero}%)</span>
+          </div>
+        </div>`;
+      });
+
+      cont.innerHTML = `
+        <div class="flex justify-between items-center">
+          <span class="font-bold text-sm text-indigo-700">${r.nombre}</span>
+          <span class="text-xs bg-indigo-100 text-indigo-800 font-bold px-2 py-0.5 rounded-full">Base: ${r.unidadesBase} unidades</span>
+        </div>
+        <div class="bg-white p-2 rounded-lg border max-h-40 overflow-y-auto">${ingHTML}</div>`;
+    }
+
+    window.aprobarEIncluirRecetaActual = async function() {
+      const idx = document.getElementById('select-receta-excel').value;
+      const rExcel = recetasExtraidasExcel[idx];
+      if(!rExcel) return;
+      try {
+        await addDoc(collection(db, "recipes"), {
+          nombre: rExcel.nombre,
+          categoria: rExcel.categoria,
+          unidadesBase: rExcel.unidadesBase,
+          ingredientes: rExcel.ingredientes,
+          fases: rExcel.fases
+        });
+        alert(`¡Receta "${rExcel.nombre}" subida a Firebase exitosamente!`);
+        switchTab('visor');
+      } catch(err) {
+        alert("Error: " + err.message);
       }
     }
 
@@ -1125,83 +1106,51 @@ HISTORIAL DE CAMBIOS & NOVEDADES (VERSIÓN v1.5):
       el.classList.remove('hidden');
     }
 
-    // --- BACKUP Y DESCARGAS ---
-    function exportarBackupJSON() {
+    window.exportarBackupJSON = function() {
       const fecha = new Date().toISOString().slice(0,10);
-
-      const dataIng = { ingredientes, tipoCambioGlobal, fecha: new Date().toISOString() };
-      descargarJSON(dataIng, `Backup_Recetario_Mobile_Ingredientes_${fecha}.json`);
-
+      descargarJSON({ ingredientes, tipoCambioGlobal }, `Backup_Recetas_Ingredientes_${fecha}.json`);
       setTimeout(() => {
-        const dataRec = { recetas, categoriasGuardadas, fecha: new Date().toISOString() };
-        descargarJSON(dataRec, `Backup_Recetario_Mobile_Recetas_${fecha}.json`);
+        descargarJSON({ recetas, categoriasGuardadas }, `Backup_Recetas_Recetario_${fecha}.json`);
       }, 300);
     }
 
-    function descargarJSON(data, nombreArchivo) {
+    function descargarJSON(data, nombre) {
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = nombreArchivo;
+      a.download = nombre;
       a.click();
     }
 
-    // --- CARGAR JSON ---
-    function importarBackupJSON(e) {
+    window.importarBackupJSON = async function(e) {
       const files = e.target.files;
-      if (!files || files.length === 0) return;
-
-      let cargadosIng = false;
-      let cargadosRec = false;
-      let leidos = 0;
-
-      Array.from(files).forEach(file => {
+      if (!files) return;
+      for(let file of files) {
         const reader = new FileReader();
-        reader.onload = function(evt) {
+        reader.onload = async function(evt) {
           try {
             const data = JSON.parse(evt.target.result);
-            
             if (data.ingredientes) {
-              ingredientes = normalizarIngredientes(data.ingredientes);
-              if (data.tipoCambioGlobal) tipoCambioGlobal = data.tipoCambioGlobal;
-              cargadosIng = true;
+              for(let ing of data.ingredientes) {
+                delete ing.id;
+                await addDoc(collection(db, "ingredients"), ing);
+              }
             }
-            
             if (data.recetas) {
-              recetas = data.recetas;
-              if (data.categoriasGuardadas) categoriasGuardadas = data.categoriasGuardadas;
-              cargadosRec = true;
+              for(let rec of data.recetas) {
+                delete rec.id;
+                await addDoc(collection(db, "recipes"), rec);
+              }
             }
-
-            leidos++;
-            if (leidos === files.length) {
-              guardarLocal();
-              let msg = "¡Carga completada!";
-              if (cargadosIng && cargadosRec) msg = `¡Se restauraron Insumos (${ingredientes.length}) y Recetas (${recetas.length})!`;
-              else if (cargadosIng) msg = `¡Catálogo de Insumos restaurado! (${ingredientes.length} insumos)`;
-              else if (cargadosRec) msg = `¡Recetario restaurado! (${recetas.length} recetas)`;
-
-              alert(msg);
-              switchTab('visor');
-            }
+            alert('¡Importación masiva completada hacia Firebase!');
+            switchTab('visor');
           } catch(err) {
-            alert(`Error al procesar el archivo ${file.name}`);
+            alert(`Error al procesar ${file.name}`);
           }
         };
         reader.readAsText(file);
-      });
+      }
     }
-
-    function guardarLocal() {
-      localStorage.setItem('app_ingredientes', JSON.stringify(ingredientes));
-      localStorage.setItem('app_recetas', JSON.stringify(recetas));
-      localStorage.setItem('app_tc', tipoCambioGlobal);
-      localStorage.setItem('app_recientes_ids', JSON.stringify(recientesIDs));
-      localStorage.setItem('app_categorias', JSON.stringify(categoriasGuardadas));
-    }
-
-    // Inicializar
-    switchTab('visor');
   </script>
 </body>
 </html>
